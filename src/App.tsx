@@ -6,12 +6,14 @@ import { Account } from './Account'
 import { Donate } from './Donate'
 import { About } from './About'
 import { Legal } from './Legal'
+import { MeteoApp } from './MeteoApp'
 
 export function App() {
   return (
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<Home />} />
+        <Route path="/app" element={<MeteoApp />} />
         <Route path="/settings" element={<Settings />} />
         <Route path="/auth" element={<Auth />} />
         <Route path="/account" element={<Account />} />
