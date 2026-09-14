@@ -9,11 +9,18 @@ const LimitRow = ({ label, type = 'number', defaultValue, options }: any) => {
       <span className="text-xs font-medium text-slate-700 dark:text-slate-300">{label}</span>
       <div className="flex items-center gap-2">
         {type === 'select' ? (
-          <select className="w-24 sm:w-28 px-2 py-1 text-xs bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded focus:outline-none focus:border-emerald-500 dark:text-slate-200 transition-colors">
+          <select 
+            defaultValue={defaultValue} 
+            className="w-24 sm:w-28 px-2 py-1 text-xs bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded focus:outline-none focus:border-emerald-500 dark:text-slate-200 transition-colors"
+          >
             {options.map((opt: string) => <option key={opt} value={opt}>{opt}</option>)}
           </select>
         ) : (
-          <input type="number" defaultValue={defaultValue} className="w-16 sm:w-20 px-2 py-1 text-xs bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded focus:outline-none focus:border-emerald-500 text-center dark:text-slate-200 transition-colors" />
+          <input 
+            type="number" 
+            defaultValue={defaultValue} 
+            className="w-16 sm:w-20 px-2 py-1 text-xs bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded focus:outline-none focus:border-emerald-500 text-center dark:text-slate-200 transition-colors" 
+          />
         )}
         <button className="px-2 py-1 text-[10px] sm:text-xs font-semibold bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 rounded hover:bg-emerald-200 dark:hover:bg-emerald-500/30 transition-colors">
           Зберегти
@@ -24,13 +31,18 @@ const LimitRow = ({ label, type = 'number', defaultValue, options }: any) => {
 }
 
 export const MeteoApp: React.FC = () => {
-  const [depth, setDepth] = useState<'24' | '48'>('48')
-  const [detail, setDetail] = useState<'1' | '3'>('3')
+  // Значення за замовчуванням зі скріншота
+  const [depth, setDepth] = useState<'24' | '48'>('24')
+  const [detail, setDetail] = useState<'1' | '3'>('1')
   const [levels, setLevels] = useState<'300' | '1000' | '3000'>('1000')
   
   const [isLocMenuOpen, setIsLocMenuOpen] = useState(false)
   const locMenuRef = useRef<HTMLDivElement>(null)
   
+  // Стани для правої колонки
+  const [showAdvancedSettings, setShowAdvancedSettings] = useState(false)
+  const [resetKey, setResetKey] = useState(0)
+
   const todayDate = new Date().toLocaleDateString('uk-UA', { day: '2-digit', month: '2-digit', year: 'numeric' })
 
   useEffect(() => {
@@ -42,6 +54,11 @@ export const MeteoApp: React.FC = () => {
     document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
+
+  const handleFactoryReset = () => {
+    // Зміна ключа форсує перемальовування LimitRow, скидаючи їх внутрішні defaultValue
+    setResetKey(prev => prev + 1)
+  }
 
   return (
     <div className="w-full flex flex-col gap-5">
@@ -59,7 +76,6 @@ export const MeteoApp: React.FC = () => {
         {/* Основна панель налаштувань */}
         <div className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl shadow-sm mt-2 flex flex-col overflow-hidden">
           
-          {/* Сітка: 1/3 зліва, 2/3 справа */}
           <div className="grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-slate-200 dark:divide-slate-700">
             
             {/* Ліва колонка (1/3) */}
@@ -82,7 +98,6 @@ export const MeteoApp: React.FC = () => {
                 </button>
                 <span className="text-[10px] text-slate-500 dark:text-slate-400 block mt-1 ml-1">Оберіть потрібну локацію</span>
                 
-                {/* Меню локацій */}
                 {isLocMenuOpen && (
                   <div className="absolute top-[65px] left-0 right-0 z-50 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg shadow-xl overflow-hidden">
                     <div className="p-1.5 border-b border-slate-100 dark:border-slate-800">
@@ -124,7 +139,7 @@ export const MeteoApp: React.FC = () => {
                 <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5 block">Ешелони (м)</label>
                 <div className="flex bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded p-0.5 w-max">
                   <button onClick={() => setLevels('300')} className={`px-3 py-1 text-xs font-medium rounded transition-colors ${levels === '300' ? 'bg-white dark:bg-slate-700 shadow-sm text-emerald-600 dark:text-emerald-400' : 'text-slate-600 dark:text-slate-400'}`}>до 300</button>
-                  <button onClick={() => setLevels('1000')} className={`px-3 py-1 text-xs font-medium rounded transition-colors ${levels === '1000' ? 'bg-white dark:bg-slate-700 shadow-sm text-emerald-600 dark:text-emerald-400' : 'text-slate-600 dark:text-slate-400'}`}>до 1000</button>
+                  <button onClick={() => setLevels('1000')} className={`px-3 py-1 text-xs font-medium rounded transition-colors ${levels === '1000' ? 'bg-white dark:bg-slate-700 shadow-sm text-emerald-600 dark:text-emerald-400 border border-emerald-500' : 'text-slate-600 dark:text-slate-400 border border-transparent'}`}>до 1000</button>
                   <button onClick={() => setLevels('3000')} className={`px-3 py-1 text-xs font-medium rounded transition-colors ${levels === '3000' ? 'bg-white dark:bg-slate-700 shadow-sm text-emerald-600 dark:text-emerald-400' : 'text-slate-600 dark:text-slate-400'}`}>до 3000</button>
                 </div>
               </div>
@@ -133,26 +148,51 @@ export const MeteoApp: React.FC = () => {
 
             {/* Права колонка (2/3) */}
             <div className="p-4 sm:p-5 md:col-span-2 flex flex-col gap-3">
-              <div className="flex items-center gap-2 mb-1">
-                <Settings2 className="w-4 h-4 text-emerald-500" />
-                <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200">Параметри засобу / заборона вильоту</h3>
+              <div className="flex flex-col mb-1">
+                <div className="flex items-center gap-2 mb-3">
+                  <Settings2 className="w-4 h-4 text-emerald-500" />
+                  <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200">Параметри засобу / заборона вильоту</h3>
+                </div>
+
+                {/* Тогл увімкнення налаштувань */}
+                <label className="flex items-center cursor-pointer w-max gap-3">
+                  <div className="relative">
+                    <input 
+                      type="checkbox" 
+                      className="sr-only" 
+                      checked={showAdvancedSettings} 
+                      onChange={() => setShowAdvancedSettings(!showAdvancedSettings)} 
+                    />
+                    <div className={`block w-10 h-6 rounded-full transition-colors ${showAdvancedSettings ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-slate-600'}`}></div>
+                    <div className={`absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform ${showAdvancedSettings ? 'translate-x-4' : ''}`}></div>
+                  </div>
+                  <span className="text-sm font-medium text-slate-700 dark:text-slate-300 select-none">
+                    Увімкнути додаткові налаштування
+                  </span>
+                </label>
               </div>
               
-              <div className="flex flex-col gap-2">
-                <LimitRow label="Макс. вітер (м/с)" defaultValue="12" />
-                <LimitRow label="Макс. пориви (м/с)" defaultValue="14" />
-                <LimitRow label="Опади / Дощ" type="select" defaultValue="Заборонено" options={["Заборонено", "Дозволено"]} />
-                <LimitRow label="Макс. вологість (%)" defaultValue="98" />
-                <LimitRow label="Наявність туману" type="select" defaultValue="Заборонено" options={["Заборонено", "Дозволено"]} />
-                <LimitRow label="Мін. темп. (°C)" defaultValue="-20" />
-                <LimitRow label="Макс. темп. (°C)" defaultValue="40" />
-              </div>
+              {/* Згорнутий блок налаштувань */}
+              {showAdvancedSettings && (
+                <div key={resetKey} className="flex flex-col gap-2 mt-1 animate-in fade-in slide-in-from-top-2 duration-200">
+                  <LimitRow label="Макс. вітер (м/с)" defaultValue="12" />
+                  <LimitRow label="Макс. пориви (м/с)" defaultValue="14" />
+                  <LimitRow label="Опади / Дощ" type="select" defaultValue="Заборонено" options={["Заборонено", "Дозволено"]} />
+                  <LimitRow label="Макс. вологість (%)" defaultValue="98" />
+                  <LimitRow label="Наявність туману" type="select" defaultValue="Заборонено" options={["Заборонено", "Дозволено"]} />
+                  <LimitRow label="Мін. темп. (°C)" defaultValue="-20" />
+                  <LimitRow label="Макс. темп. (°C)" defaultValue="40" />
 
-              <div className="flex justify-end mt-2">
-                <button className="px-4 py-1.5 text-xs font-semibold bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-md transition-colors shadow-sm">
-                  Повернутись до базових налаштувань
-                </button>
-              </div>
+                  <div className="flex justify-end mt-2">
+                    <button 
+                      onClick={handleFactoryReset}
+                      className="px-4 py-1.5 text-xs font-semibold bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-md transition-colors shadow-sm"
+                    >
+                      Скинути до заводських
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
 
           </div>
