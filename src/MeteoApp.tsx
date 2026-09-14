@@ -1,29 +1,46 @@
 import React, { useState } from 'react'
-import { MapPin, Settings2, Wind, Sunrise, Moon, CloudLightning, Activity, CalendarDays } from 'lucide-react'
+import { MapPin, Settings2, Wind, Sunrise, Moon, CloudLightning, Activity, CalendarDays, ChevronDown } from 'lucide-react'
+
+// Допоміжний компонент для рядка налаштувань
+const LimitRow = ({ label, type = 'number', defaultValue, options }: any) => {
+  // Кольорова логіка: rose-500 (небезпека) для лімітів, emerald-500 (безпечно) для дозволу
+  const borderColor = type === 'select' && defaultValue === 'Дозволено' ? 'border-l-emerald-500' : 'border-l-rose-500'
+  
+  return (
+    <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 bg-slate-50 dark:bg-slate-950/50 rounded-lg border border-slate-200 dark:border-slate-800 border-l-4 ${borderColor}`}>
+      <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{label}</span>
+      <div className="flex items-center gap-2 w-full sm:w-auto">
+        {type === 'select' ? (
+          <select className="flex-1 sm:w-32 px-3 py-1.5 text-sm bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-md focus:outline-none focus:border-emerald-500 dark:text-slate-200 transition-colors">
+            {options.map((opt: string) => <option key={opt} value={opt}>{opt}</option>)}
+          </select>
+        ) : (
+          <input type="number" defaultValue={defaultValue} className="flex-1 sm:w-24 px-3 py-1.5 text-sm bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-md focus:outline-none focus:border-emerald-500 text-center dark:text-slate-200 transition-colors" />
+        )}
+        <button className="px-3 py-1.5 text-sm font-semibold bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 rounded-md hover:bg-emerald-200 dark:hover:bg-emerald-500/30 transition-colors shadow-sm">
+          Зберегти
+        </button>
+      </div>
+    </div>
+  )
+}
 
 export const MeteoApp: React.FC = () => {
   const [depth, setDepth] = useState<'24' | '48'>('48')
   const [detail, setDetail] = useState<'1' | '3'>('3')
+  const [isLimitsOpen, setIsLimitsOpen] = useState(false) // За замовчуванням згорнуто
 
   return (
     <div className="w-full flex flex-col gap-6">
       {/* Шапка сторінки */}
       <header className="flex flex-col gap-4">
-        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4">
-          <div className="max-w-3xl">
-            <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white tracking-wide mb-2">
-              Консоль MeteoUAV
-            </h1>
-            <p className="text-base font-medium text-emerald-600 dark:text-emerald-500 mb-3">
-              Тактичний прогноз погоди для БпЛА розроблений для територій України
-            </p>
-            <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
-              Забезпечує більш точне прогнозування завдяки власній математичній моделі обчислення сирих даних, врахування рельєфу України, а також використовуючи історичні стани погоди для порівняння. Просто налаштуйте власні параметри й отримайте результат.
-            </p>
-          </div>
-          <span className="shrink-0 self-start text-xs font-mono px-2.5 py-1 bg-cyan-100 dark:bg-cyan-950/60 border border-cyan-300 dark:border-cyan-800 text-cyan-700 dark:text-cyan-400 rounded">
-            DEV ENVIRONMENT
-          </span>
+        <div className="max-w-3xl">
+          <p className="text-base font-medium text-emerald-600 dark:text-emerald-500 mb-2">
+            Тактичний прогноз погоди MeteoUAV необхідний пілотам і не тільки.
+          </p>
+          <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
+            Просте використання, найточніші дані, легка доступність в поєднанні з розширеними можливостями.
+          </p>
         </div>
 
         {/* Панель налаштувань */}
@@ -57,20 +74,38 @@ export const MeteoApp: React.FC = () => {
             </div>
           </div>
 
-          {/* Критичні показники */}
+          {/* Критичні показники (Згортаються) */}
           <div className="pt-4 border-t border-slate-200 dark:border-slate-800">
-            <div className="flex items-center gap-2 mb-3">
-              <Settings2 className="w-4 h-4 text-slate-400" />
-              <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Критичні показники засобу (заборона вильоту)</span>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <span className="px-3 py-1 bg-red-100 dark:bg-red-500/10 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-500/20 rounded-md text-xs font-semibold">Вітер &gt; 12 м/с</span>
-              <span className="px-3 py-1 bg-red-100 dark:bg-red-500/10 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-500/20 rounded-md text-xs font-semibold">Пориви &gt; 14 м/с</span>
-              <span className="px-3 py-1 bg-blue-100 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400 border border-blue-200 dark:border-blue-500/20 rounded-md text-xs font-semibold">Опади / Дощ</span>
-              <span className="px-3 py-1 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 rounded-md text-xs font-semibold">Вологість &gt; 98%</span>
-              <span className="px-3 py-1 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 rounded-md text-xs font-semibold">Туман</span>
-              <span className="px-3 py-1 bg-orange-100 dark:bg-orange-500/10 text-orange-700 dark:text-orange-400 border border-orange-200 dark:border-orange-500/20 rounded-md text-xs font-semibold">-20°C / +40°C</span>
-            </div>
+            <button 
+              onClick={() => setIsLimitsOpen(!isLimitsOpen)}
+              className="flex items-center justify-between w-full group py-1 outline-none"
+            >
+              <div className="flex items-center gap-2">
+                <Settings2 className="w-5 h-5 text-emerald-600 dark:text-emerald-500" />
+                <span className="text-sm font-bold text-slate-800 dark:text-slate-200 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
+                  Показники засобу / заборона вильоту
+                </span>
+              </div>
+              <ChevronDown className={`w-5 h-5 text-slate-500 transition-transform duration-300 ${isLimitsOpen ? 'rotate-180' : ''}`} />
+            </button>
+
+            {isLimitsOpen && (
+              <div className="mt-4 flex flex-col gap-2">
+                <LimitRow label="Максимальний вітер (м/с)" defaultValue="12" />
+                <LimitRow label="Максимальні пориви (м/с)" defaultValue="14" />
+                <LimitRow label="Опади / Дощ" type="select" defaultValue="Заборонено" options={["Заборонено", "Дозволено"]} />
+                <LimitRow label="Максимальна вологість (%)" defaultValue="98" />
+                <LimitRow label="Наявність туману" type="select" defaultValue="Заборонено" options={["Заборонено", "Дозволено"]} />
+                <LimitRow label="Температура мін. (°C)" defaultValue="-20" />
+                <LimitRow label="Температура макс. (°C)" defaultValue="40" />
+                
+                <div className="flex justify-end mt-3 pt-3 border-t border-slate-200 dark:border-slate-800">
+                  <button className="px-4 py-2 text-sm font-semibold text-slate-700 dark:text-slate-300 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-lg transition-colors">
+                    Повернути до базових
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </header>
