@@ -1,12 +1,13 @@
 import React from 'react'
 
-export const Legal: React.FC = () => {
-  return (
-    <main className="min-h-screen bg-slate-950 text-slate-100 flex flex-col items-center justify-center p-6 text-center">
-      <h1 className="text-2xl font-bold text-white mb-2">Правова інформація</h1>
-      <p className="text-slate-400 text-sm max-w-md leading-relaxed">
-        © 2026 MeteoUAV. Всі права захищено. Сервіс надає розрахункові метеодані «як є» виключно для інформаційної підтримки планування польотів.
-      </p>
-    </main>
-  )
-}
+export const Legal: React.FC = () => (
+  <div className="w-full flex flex-col gap-6">
+    <header className="border-b border-slate-300 dark:border-slate-800 pb-4">
+      <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Правова інформація</h1>
+      <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">Умови використання та політика конфіденційності.</p>
+    </header>
+    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 rounded-xl shadow-sm dark:shadow-none">
+      <p className="text-slate-500 dark:text-slate-400">Сторінка в розробці...</p>
+    </div>
+  </div>
+)

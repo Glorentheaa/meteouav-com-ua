@@ -1,17 +1,27 @@
 import React from 'react'
+import { CloudSun } from 'lucide-react'
+import { Link } from 'react-router-dom'
 
 export const Home: React.FC = () => {
   return (
-    <main className="min-h-screen bg-slate-950 text-slate-100 flex flex-col items-center justify-center p-6 text-center">
-      <span className="px-3 py-1 bg-cyan-950/60 border border-cyan-800 text-cyan-400 text-xs tracking-widest uppercase font-mono rounded-full mb-4">
-        MeteoUAV Platform
-      </span>
-      <h1 className="text-4xl sm:text-5xl font-black tracking-tight text-white mb-4">
-        Тактичний метеосервіс БпЛА
+    <div className="flex flex-col items-center justify-center flex-1 text-center px-4 py-12">
+      <CloudSun className="w-20 h-20 text-slate-300 dark:text-slate-800 mb-6" />
+      
+      <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-slate-800 dark:text-white mb-4">
+        Сервіс у стадії розробки
       </h1>
-      <p className="max-w-xl text-slate-400 text-sm sm:text-base leading-relaxed">
-        Спеціалізовані розрахунки вітрового профілю, висоти хмарності та умов виконання польотів. Сервіс знаходиться в стадії розробки та закритого калібрування.
+      
+      <p className="max-w-xl text-slate-600 dark:text-slate-400 text-base leading-relaxed mb-8">
+        MeteoUAV знаходиться на етапі закритого калібрування та створення архітектури. 
+        Основний робочий простір тимчасово доступний за посиланням нижче.
       </p>
-    </main>
+      
+      <Link 
+        to="/app" 
+        className="px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-lg transition-colors shadow-sm"
+      >
+        Перейти до МетеоКонсолі
+      </Link>
+    </div>
   )
 }
