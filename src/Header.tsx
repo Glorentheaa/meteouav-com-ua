@@ -12,7 +12,9 @@ export const Header: React.FC<{ onMenuClick?: () => void }> = ({ onMenuClick }) 
   const [theme, setTheme] = useState<Theme>(() => 
     (localStorage.getItem('theme') as Theme) || 'system'
   )
+  const [isScrolled, setIsScrolled] = useState(false)
 
+  // Обробка теми
   useEffect(() => {
     const root = window.document.documentElement
     root.classList.remove('light', 'dark')
@@ -28,9 +30,17 @@ export const Header: React.FC<{ onMenuClick?: () => void }> = ({ onMenuClick }) 
     }
   }, [theme])
 
-  // Виносимо перемикач в окрему функцію, щоб не дублювати код для мобілки/десктопу
+  // Обробка скролінгу для мобільного меню
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 20)
+    }
+    window.addEventListener('scroll', handleScroll)
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [])
+
   const ThemeSwitcher = ({ isMobile }: { isMobile?: boolean }) => (
-    <div className={`flex bg-slate-300/50 dark:bg-slate-900/80 rounded-lg p-1 border border-slate-300 dark:border-slate-800 ${isMobile ? 'w-full mt-4 sm:hidden' : 'hidden sm:flex'}`}>
+    <div className={`flex bg-slate-300/50 dark:bg-slate-900/80 rounded-lg p-1 border border-slate-300 dark:border-slate-800 ${isMobile ? 'w-full sm:hidden' : 'hidden sm:flex'}`}>
       <button onClick={() => setTheme('light')} className={`flex-1 flex justify-center p-1.5 rounded-md transition-colors ${theme === 'light' ? 'bg-white dark:bg-slate-700 shadow-sm text-amber-500' : 'text-slate-500 hover:text-slate-700 dark:text-slate-400'}`}>
         <Sun className="w-4 h-4" />
       </button>
@@ -44,12 +54,11 @@ export const Header: React.FC<{ onMenuClick?: () => void }> = ({ onMenuClick }) 
   )
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-slate-300 dark:border-slate-800 bg-slate-200 dark:bg-slate-950">
+    <header className="sticky top-0 z-50 w-full border-b border-slate-300 dark:border-slate-800 bg-slate-200 dark:bg-slate-950 transition-colors">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3">
         <div className="flex flex-col sm:flex-row w-full justify-between items-start sm:items-center">
           
-          {/* Верхній ряд на мобільному / Ліва частина на десктопі */}
-          <div className="flex items-center justify-between w-full sm:w-auto">
+          <div className="flex items-center justify-between w-full sm:w-auto z-10 bg-slate-200 dark:bg-slate-950">
             <div className="flex items-center gap-4">
               {!isHome && (
                 <button 
@@ -61,20 +70,17 @@ export const Header: React.FC<{ onMenuClick?: () => void }> = ({ onMenuClick }) 
               )}
               <Logo />
             </div>
-            {/* Десктопний перемикач теми */}
             <div className="ml-6">
               <ThemeSwitcher />
             </div>
           </div>
 
-          {/* Нижні ряди на мобільному / Права частина на десктопі */}
-          <div className="flex flex-col sm:flex-row items-center w-full sm:w-auto gap-3 mt-0 sm:mt-0">
-            {/* Мобільний перемикач теми */}
+          {/* Контейнер, який ховається при скролінгу на мобілках */}
+          <div className={`flex flex-col sm:flex-row items-center w-full sm:w-auto gap-3 transition-all duration-300 origin-top overflow-hidden sm:overflow-visible ${isScrolled ? 'max-h-0 opacity-0 sm:max-h-20 sm:opacity-100 mt-0' : 'max-h-40 opacity-100 mt-3 sm:mt-0'}`}>
             <ThemeSwitcher isMobile />
             
-            {/* Кнопка встановлення */}
             {!isHome && (
-              <button className="flex items-center justify-center gap-2 px-3 py-2 sm:py-1.5 rounded-lg border border-emerald-500/30 hover:border-emerald-500 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 transition-all w-full sm:w-auto mt-2 sm:mt-0 shadow-sm">
+              <button className="flex items-center justify-center gap-2 px-3 py-2 sm:py-1.5 rounded-lg border border-emerald-500/30 hover:border-emerald-500 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 transition-all w-full sm:w-auto shadow-sm">
                 <Smartphone className="w-4 h-4" />
                 <span className="font-semibold text-sm">Встановити</span>
                 <Download className="w-4 h-4" />
