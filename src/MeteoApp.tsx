@@ -289,64 +289,68 @@ export const MeteoApp: React.FC = () => {
 
       {/* Розділювач та Дата */}
       {/* Розділювач та Дата (Грід 1) */}
-      <div className="flex flex-col items-center my-2">
-        <div className="w-full h-px bg-slate-300 dark:bg-slate-700 mb-2"></div>
-        <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400">Останнє оновлення {lastUpdated}</span>
-      </div>
-
-      {/* Основні блоки (Грід 1) */}
-      <section className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-        {blocks.shortTerm && (
-          <div className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 p-5 rounded-xl flex flex-col h-64 shadow-sm">
-            <h2 className="text-base font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2 mb-4">
-              <CloudLightning className="w-5 h-5 text-emerald-500" /> Прогноз на найближчий час
-            </h2>
-            <div className="flex-1 bg-slate-50 dark:bg-slate-900 border border-dashed border-slate-300 dark:border-slate-700 rounded-lg flex items-center justify-center">
-              <span className="text-slate-400 text-sm">Таблиця погодних явищ</span>
-            </div>
-            <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-2 text-right">Оновлено 00:10:05 назад</p>
+      {(blocks.shortTerm || blocks.wind || blocks.windows || blocks.conclusion) && (
+        <>
+          <div className="flex flex-col items-center my-2">
+            <div className="w-full h-px bg-slate-300 dark:bg-slate-700 mb-2"></div>
+            <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400">Останнє оновлення {lastUpdated}</span>
           </div>
-        )}
 
-        {blocks.wind && (
-          <div className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 p-5 rounded-xl flex flex-col h-64 shadow-sm">
-            <h2 className="text-base font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2 mb-4">
-              <Wind className="w-5 h-5 text-emerald-500" /> Вітер та кромка хмар по ешелонах
-            </h2>
-            <div className="flex-1 bg-slate-50 dark:bg-slate-900 border border-dashed border-slate-300 dark:border-slate-700 rounded-lg flex items-center justify-center">
-              <span className="text-slate-400 text-sm">Графік шарів вітру (0-1000м)</span>
-            </div>
-            <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-2 text-right">Оновлено 00:10:05 назад</p>
-          </div>
-        )}
+          {/* Основні блоки (Грід 1) */}
+          <section className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+            {blocks.shortTerm && (
+              <div className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 p-5 rounded-xl flex flex-col h-64 shadow-sm">
+                <h2 className="text-base font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2 mb-4">
+                  <CloudLightning className="w-5 h-5 text-emerald-500" /> Прогноз на найближчий час
+                </h2>
+                <div className="flex-1 bg-slate-50 dark:bg-slate-900 border border-dashed border-slate-300 dark:border-slate-700 rounded-lg flex items-center justify-center">
+                  <span className="text-slate-400 text-sm">Таблиця погодних явищ</span>
+                </div>
+                <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-2 text-right">Оновлено 00:10:05 назад</p>
+              </div>
+            )}
 
-        {blocks.windows && (
-          <div className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 p-5 rounded-xl flex flex-col h-64 shadow-sm">
-            <h2 className="text-base font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2 mb-4">
-              <Activity className="w-5 h-5 text-emerald-500" /> Вікна для польотів
-            </h2>
-            <div className="flex-1 bg-slate-50 dark:bg-slate-900 border border-dashed border-slate-300 dark:border-slate-700 rounded-lg flex items-center justify-center">
-              <span className="text-slate-400 text-sm">Таймлайн безпечних зон</span>
-            </div>
-            <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-2 text-right">Оновлено 00:10:05 назад</p>
-          </div>
-        )}
+            {blocks.wind && (
+              <div className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 p-5 rounded-xl flex flex-col h-64 shadow-sm">
+                <h2 className="text-base font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2 mb-4">
+                  <Wind className="w-5 h-5 text-emerald-500" /> Вітер та кромка хмар по ешелонах
+                </h2>
+                <div className="flex-1 bg-slate-50 dark:bg-slate-900 border border-dashed border-slate-300 dark:border-slate-700 rounded-lg flex items-center justify-center">
+                  <span className="text-slate-400 text-sm">Графік шарів вітру (0-1000м)</span>
+                </div>
+                <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-2 text-right">Оновлено 00:10:05 назад</p>
+              </div>
+            )}
 
-        {blocks.conclusion && (
-          <div className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 p-5 rounded-xl flex flex-col h-64 shadow-sm">
-            <h2 className="text-base font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2 mb-4">
-              <Activity className="w-5 h-5 text-emerald-500" /> Висновок від метеолога
-            </h2>
-            <div className="flex-1 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg p-4">
-              <p className="text-sm text-slate-600 dark:text-slate-300 italic">
-                "Очікується погіршення умов після 14:00 через проходження холодного фронту. 
-                Прогнозуються пориви вітру до 16 м/с на висоті 200м."
-              </p>
-            </div>
-            <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-2 text-right">Оновлено 00:10:05 назад</p>
-          </div>
-        )}
-      </section>
+            {blocks.windows && (
+              <div className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 p-5 rounded-xl flex flex-col h-64 shadow-sm">
+                <h2 className="text-base font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2 mb-4">
+                  <Activity className="w-5 h-5 text-emerald-500" /> Вікна для польотів
+                </h2>
+                <div className="flex-1 bg-slate-50 dark:bg-slate-900 border border-dashed border-slate-300 dark:border-slate-700 rounded-lg flex items-center justify-center">
+                  <span className="text-slate-400 text-sm">Таймлайн безпечних зон</span>
+                </div>
+                <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-2 text-right">Оновлено 00:10:05 назад</p>
+              </div>
+            )}
+
+            {blocks.conclusion && (
+              <div className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 p-5 rounded-xl flex flex-col h-64 shadow-sm">
+                <h2 className="text-base font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2 mb-4">
+                  <Activity className="w-5 h-5 text-emerald-500" /> Висновок від метеолога
+                </h2>
+                <div className="flex-1 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg p-4">
+                  <p className="text-sm text-slate-600 dark:text-slate-300 italic">
+                    "Очікується погіршення умов після 14:00 через проходження холодного фронту. 
+                    Прогнозуються пориви вітру до 16 м/с на висоті 200м."
+                  </p>
+                </div>
+                <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-2 text-right">Оновлено 00:10:05 назад</p>
+              </div>
+            )}
+          </section>
+        </>
+      )}
 
       {/* Блок з тижневим прогнозом та сонцем/місяцем (Грід 2) */}
       {(blocks.weekly || blocks.sunMoon) && (
