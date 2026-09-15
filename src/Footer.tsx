@@ -14,8 +14,6 @@ export const Footer: React.FC = () => {
             <Link to="/about" className="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors underline decoration-slate-400 dark:decoration-slate-600 underline-offset-4">
               MeteoUAV
             </Link>
-              MeteoUAV
-            </Link>
             . <Link to="/legal" className="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors underline decoration-slate-400 dark:decoration-slate-600 underline-offset-4">
               Усі права захищено
             </Link>.
