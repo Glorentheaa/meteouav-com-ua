@@ -224,32 +224,34 @@ const getUaTime = () => {
             </div>
 
             {/* Правий підблок: Вмикач + Оновлення */}
-            <div className="flex flex-col w-full lg:items-end justify-end h-full">
-              <label className="flex items-center lg:justify-end cursor-pointer gap-2 group mb-1.5 lg:mr-1">
-                <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 group-hover:text-slate-800 dark:group-hover:text-slate-200 transition-colors select-none">
-                  Показати додаткові параметри
-                </span>
-                <div className="relative flex items-center">
-                  <input 
-                    type="checkbox" 
-                    className="sr-only" 
-                    checked={showAdvancedSettings} 
-                    onChange={() => setShowAdvancedSettings(!showAdvancedSettings)} 
-                  />
-                  <div className={`block w-8 h-4.5 rounded-full transition-colors ${showAdvancedSettings ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-slate-600'}`}></div>
-                  <div className={`absolute left-0.5 bg-white w-3.5 h-3.5 rounded-full transition-transform ${showAdvancedSettings ? 'translate-x-3.5' : ''}`}></div>
-                </div>
-              </label>
-              
-              <button 
-                onClick={handleRefresh}
-                className="px-6 py-2.5 text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg transition-colors shadow-sm flex items-center justify-center gap-2 w-full lg:w-auto h-[42px]"
-              >
-                <RefreshCw className="w-4 h-4" />
-                Оновити прогноз
-              </button>
+            <div className="flex flex-col w-full items-center justify-end h-full">
+              {/* Обгортка w-max для вирівнювання ширини тексту та кнопки */}
+              <div className="flex flex-col w-full sm:w-max">
+                <label className="flex items-center justify-between cursor-pointer gap-3 group mb-1.5 px-1">
+                  <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 group-hover:text-slate-800 dark:group-hover:text-slate-200 transition-colors select-none">
+                    Показати додаткові параметри
+                  </span>
+                  <div className="relative flex items-center shrink-0">
+                    <input 
+                      type="checkbox" 
+                      className="sr-only" 
+                      checked={showAdvancedSettings} 
+                      onChange={() => setShowAdvancedSettings(!showAdvancedSettings)} 
+                    />
+                    <div className={`block w-8 h-4.5 rounded-full transition-colors ${showAdvancedSettings ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-slate-600'}`}></div>
+                    <div className={`absolute left-0.5 bg-white w-3.5 h-3.5 rounded-full transition-transform ${showAdvancedSettings ? 'translate-x-3.5' : ''}`}></div>
+                  </div>
+                </label>
+                
+                <button 
+                  onClick={handleRefresh}
+                  className="px-6 py-2.5 text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg transition-colors shadow-sm flex items-center justify-center gap-2 w-full h-[42px]"
+                >
+                  <RefreshCw className="w-4 h-4" />
+                  Оновити прогноз
+                </button>
+              </div>
             </div>
-          </div>
 
           {/* Розгорнутий блок додаткових налаштувань */}
           {showAdvancedSettings && (
