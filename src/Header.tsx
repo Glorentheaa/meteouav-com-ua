@@ -30,12 +30,22 @@ export const Header: React.FC<{ onMenuClick?: () => void }> = ({ onMenuClick }) 
     }
   }, [theme])
 
-  // Обробка скролінгу для мобільного меню
+// Обробка скролінгу для мобільного меню
   useEffect(() => {
     const handleScroll = () => {
-      setIsScrolled(window.scrollY > 20)
+      const currentScrollY = window.scrollY
+      
+      if (currentScrollY > 60) {
+        // Ховаємо, коли відчутно відійшли від верху
+        setIsScrolled(true)
+      } else if (currentScrollY < 10) {
+        // Показуємо тільки коли повернулись майже в абсолютний нуль
+        setIsScrolled(false)
+      }
+      // Між 10 та 60 стан не змінюється, що гарантує відсутність блимання
     }
-    window.addEventListener('scroll', handleScroll)
+
+    window.addEventListener('scroll', handleScroll, { passive: true })
     return () => window.removeEventListener('scroll', handleScroll)
   }, [])
 
