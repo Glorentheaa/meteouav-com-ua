@@ -70,7 +70,7 @@ export const MeteoApp: React.FC = () => {
   const [showAdvancedSettings, setShowAdvancedSettings] = useState(false)
   const [showWarnings, setShowWarnings] = useState(false)
 
-  const getUaTime = () => {
+const getUaTime = () => {
     return new Date().toLocaleString('uk-UA', {
       day: '2-digit', month: '2-digit', year: 'numeric',
       hour: '2-digit', minute: '2-digit',
@@ -78,10 +78,31 @@ export const MeteoApp: React.FC = () => {
     }).replace(',', ' о')
   }
 
-  const [lastUpdated, setLastUpdated] = useState(getUaTime())
-  const [autoUpdated] = useState(getUaTime()) // Статичне для старту, оновлюватиметься автоматично згодом
+  // Функція для форматування дати у формат "15-16 вересня"
+  const getForecastDatesText = () => {
+    const today = new Date()
+    const tomorrow = new Date()
+    tomorrow.setDate(tomorrow.getDate() + 1)
 
-  // Стан для відображення інфо-блоків
+    const d1 = today.getDate()
+    const m1 = today.toLocaleDateString('uk-UA', { month: 'long' })
+    const d2 = tomorrow.getDate()
+    const m2 = tomorrow.toLocaleDateString('uk-UA', { month: 'long' })
+
+    return m1 === m2 ? `${d1}-${d2} ${m1}` : `${d1} ${m1} - ${d2} ${m2}`
+  }
+
+  const [lastUpdated, setLastUpdated] = useState(getUaTime())
+  const [autoUpdated] = useState(getUaTime())
+  const [forecastDates, setForecastDates] = useState(getForecastDatesText())
+
+  // Стани для згортання/розгортання сіток
+  const [showGrid1, setShowGrid1] = useState(true)
+  const [showGrid2, setShowGrid2] = useState(true)
+
+  // Реф для компенсації стрибків скролу
+  const controlsRef = useRef<HTMLDivElement>(null)
+
   const [blocks, setBlocks] = useState({
     shortTerm: true,
     wind: true,
@@ -91,11 +112,26 @@ export const MeteoApp: React.FC = () => {
     sunMoon: true
   })
 
-  // Функція перемикання з обмеженням на вимкнення останнього
+  // Оновлена функція перемикання з компенсацією скролу
   const handleToggleBlock = (key: keyof typeof blocks) => {
     const activeCount = Object.values(blocks).filter(Boolean).length
     if (activeCount === 1 && blocks[key]) return 
+    
+    const prevTop = controlsRef.current?.getBoundingClientRect().top
+
     setBlocks(prev => ({ ...prev, [key]: !prev[key] }))
+
+    setTimeout(() => {
+      if (controlsRef.current && prevTop !== undefined) {
+        const newTop = controlsRef.current.getBoundingClientRect().top
+        window.scrollBy(0, newTop - prevTop)
+      }
+    }, 0)
+  }
+
+  const handleRefresh = () => {
+    setLastUpdated(getUaTime())
+    setForecastDates(getForecastDatesText())
   }
 
   useEffect(() => {
@@ -182,7 +218,7 @@ export const MeteoApp: React.FC = () => {
             {/* Правий підблок: Кнопка Оновлення + Вмикач додаткових параметрів */}
             <div className="flex flex-col items-end gap-3 w-full sm:w-auto">
               <button 
-                onClick={() => setLastUpdated(getUaTime())}
+                onClick={handleRefresh}
                 className="px-6 py-2.5 text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg transition-colors shadow-sm flex items-center justify-center gap-2 w-full sm:w-auto"
               >
                 <RefreshCw className="w-4 h-4" />
@@ -291,113 +327,133 @@ export const MeteoApp: React.FC = () => {
       {/* Розділювач та Дата (Грід 1) */}
       {(blocks.shortTerm || blocks.wind || blocks.windows || blocks.conclusion) && (
         <>
-          <div className="flex flex-col items-center my-2">
-            <div className="w-full h-px bg-slate-300 dark:bg-slate-700 mb-2"></div>
-            <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400">Останнє оновлення {lastUpdated}</span>
+          <div 
+            onClick={() => setShowGrid1(!showGrid1)}
+            className="flex flex-col items-center my-2 cursor-pointer group select-none"
+          >
+            <div className="w-full h-px bg-slate-300 dark:bg-slate-700 mb-2 group-hover:bg-emerald-500/50 transition-colors"></div>
+            <div className="flex items-center justify-center gap-3 text-slate-500 dark:text-slate-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors px-4 w-full">
+              <ChevronDown className={`w-4 h-4 shrink-0 transition-transform duration-300 ${showGrid1 ? 'rotate-180' : ''}`} />
+              <span className="text-[11px] font-medium text-center">
+                Деталізований прогноз погоди на {forecastDates}. Останнє оновлення {lastUpdated}
+              </span>
+              <ChevronDown className={`w-4 h-4 shrink-0 transition-transform duration-300 ${showGrid1 ? 'rotate-180' : ''}`} />
+            </div>
           </div>
 
-          {/* Основні блоки (Грід 1) */}
-          <section className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-            {blocks.shortTerm && (
-              <div className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 p-5 rounded-xl flex flex-col h-64 shadow-sm">
-                <h2 className="text-base font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2 mb-4">
-                  <CloudLightning className="w-5 h-5 text-emerald-500" /> Прогноз на найближчий час
-                </h2>
-                <div className="flex-1 bg-slate-50 dark:bg-slate-900 border border-dashed border-slate-300 dark:border-slate-700 rounded-lg flex items-center justify-center">
-                  <span className="text-slate-400 text-sm">Таблиця погодних явищ</span>
+          {showGrid1 && (
+            <section className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 animate-in fade-in slide-in-from-top-2 duration-300">
+              {blocks.shortTerm && (
+                <div className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 p-5 rounded-xl flex flex-col h-64 shadow-sm">
+                  <h2 className="text-base font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2 mb-4">
+                    <CloudLightning className="w-5 h-5 text-emerald-500" /> Прогноз на найближчий час
+                  </h2>
+                  <div className="flex-1 bg-slate-50 dark:bg-slate-900 border border-dashed border-slate-300 dark:border-slate-700 rounded-lg flex items-center justify-center">
+                    <span className="text-slate-400 text-sm">Таблиця погодних явищ</span>
+                  </div>
+                  <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-2 text-right">Оновлено 00:10:05 назад</p>
                 </div>
-                <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-2 text-right">Оновлено 00:10:05 назад</p>
-              </div>
-            )}
+              )}
 
-            {blocks.wind && (
-              <div className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 p-5 rounded-xl flex flex-col h-64 shadow-sm">
-                <h2 className="text-base font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2 mb-4">
-                  <Wind className="w-5 h-5 text-emerald-500" /> Вітер та кромка хмар по ешелонах
-                </h2>
-                <div className="flex-1 bg-slate-50 dark:bg-slate-900 border border-dashed border-slate-300 dark:border-slate-700 rounded-lg flex items-center justify-center">
-                  <span className="text-slate-400 text-sm">Графік шарів вітру (0-1000м)</span>
+              {blocks.wind && (
+                <div className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 p-5 rounded-xl flex flex-col h-64 shadow-sm">
+                  <h2 className="text-base font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2 mb-4">
+                    <Wind className="w-5 h-5 text-emerald-500" /> Вітер та кромка хмар по ешелонах
+                  </h2>
+                  <div className="flex-1 bg-slate-50 dark:bg-slate-900 border border-dashed border-slate-300 dark:border-slate-700 rounded-lg flex items-center justify-center">
+                    <span className="text-slate-400 text-sm">Графік шарів вітру (0-1000м)</span>
+                  </div>
+                  <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-2 text-right">Оновлено 00:10:05 назад</p>
                 </div>
-                <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-2 text-right">Оновлено 00:10:05 назад</p>
-              </div>
-            )}
+              )}
 
-            {blocks.windows && (
-              <div className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 p-5 rounded-xl flex flex-col h-64 shadow-sm">
-                <h2 className="text-base font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2 mb-4">
-                  <Activity className="w-5 h-5 text-emerald-500" /> Вікна для польотів
-                </h2>
-                <div className="flex-1 bg-slate-50 dark:bg-slate-900 border border-dashed border-slate-300 dark:border-slate-700 rounded-lg flex items-center justify-center">
-                  <span className="text-slate-400 text-sm">Таймлайн безпечних зон</span>
+              {blocks.windows && (
+                <div className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 p-5 rounded-xl flex flex-col h-64 shadow-sm">
+                  <h2 className="text-base font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2 mb-4">
+                    <Activity className="w-5 h-5 text-emerald-500" /> Вікна для польотів
+                  </h2>
+                  <div className="flex-1 bg-slate-50 dark:bg-slate-900 border border-dashed border-slate-300 dark:border-slate-700 rounded-lg flex items-center justify-center">
+                    <span className="text-slate-400 text-sm">Таймлайн безпечних зон</span>
+                  </div>
+                  <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-2 text-right">Оновлено 00:10:05 назад</p>
                 </div>
-                <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-2 text-right">Оновлено 00:10:05 назад</p>
-              </div>
-            )}
+              )}
 
-            {blocks.conclusion && (
-              <div className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 p-5 rounded-xl flex flex-col h-64 shadow-sm">
-                <h2 className="text-base font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2 mb-4">
-                  <Activity className="w-5 h-5 text-emerald-500" /> Висновок від метеолога
-                </h2>
-                <div className="flex-1 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg p-4">
-                  <p className="text-sm text-slate-600 dark:text-slate-300 italic">
-                    "Очікується погіршення умов після 14:00 через проходження холодного фронту. 
-                    Прогнозуються пориви вітру до 16 м/с на висоті 200м."
-                  </p>
+              {blocks.conclusion && (
+                <div className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 p-5 rounded-xl flex flex-col h-64 shadow-sm">
+                  <h2 className="text-base font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2 mb-4">
+                    <Activity className="w-5 h-5 text-emerald-500" /> Висновок від метеолога
+                  </h2>
+                  <div className="flex-1 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg p-4">
+                    <p className="text-sm text-slate-600 dark:text-slate-300 italic">
+                      "Очікується погіршення умов після 14:00 через проходження холодного фронту. 
+                      Прогнозуються пориви вітру до 16 м/с на висоті 200м."
+                    </p>
+                  </div>
+                  <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-2 text-right">Оновлено 00:10:05 назад</p>
                 </div>
-                <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-2 text-right">Оновлено 00:10:05 назад</p>
-              </div>
-            )}
-          </section>
+              )}
+            </section>
+          )}
         </>
       )}
 
       {/* Блок з тижневим прогнозом та сонцем/місяцем (Грід 2) */}
       {(blocks.weekly || blocks.sunMoon) && (
         <>
-          <div className="flex flex-col items-center mt-4 mb-2">
-            <div className="w-full h-px bg-slate-300 dark:bg-slate-700 mb-2"></div>
-            <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400">Автоматичне оновлення, останнє оновлення {autoUpdated}</span>
+          <div 
+            onClick={() => setShowGrid2(!showGrid2)}
+            className="flex flex-col items-center mt-4 mb-2 cursor-pointer group select-none"
+          >
+            <div className="w-full h-px bg-slate-300 dark:bg-slate-700 mb-2 group-hover:bg-emerald-500/50 transition-colors"></div>
+            <div className="flex items-center justify-center gap-3 text-slate-500 dark:text-slate-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors px-4 w-full">
+              <ChevronDown className={`w-4 h-4 shrink-0 transition-transform duration-300 ${showGrid2 ? 'rotate-180' : ''}`} />
+              <span className="text-[11px] font-medium text-center">
+                Загальні параметри прогнозу з автоматичним оновленням. Останнє оновлення {autoUpdated}
+              </span>
+              <ChevronDown className={`w-4 h-4 shrink-0 transition-transform duration-300 ${showGrid2 ? 'rotate-180' : ''}`} />
+            </div>
           </div>
 
-          {/* Використовуємо 3 колонки: 2 для тижня, 1 для сонця/місяця */}
-          <section className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
-            {blocks.weekly && (
-              <div className={`bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 p-5 rounded-xl flex flex-col h-64 shadow-sm ${blocks.sunMoon ? 'lg:col-span-2' : 'lg:col-span-3'}`}>
-                <h2 className="text-base font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2 mb-4">
-                  <CalendarDays className="w-5 h-5 text-emerald-500" /> Тижневий прогноз
-                </h2>
-                <div className="flex-1 bg-slate-50 dark:bg-slate-900 border border-dashed border-slate-300 dark:border-slate-700 rounded-lg flex items-center justify-center">
-                  <span className="text-slate-400 text-sm">Спрощений потижневий огляд</span>
+          {showGrid2 && (
+            <section className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 animate-in fade-in slide-in-from-top-2 duration-300">
+              {blocks.weekly && (
+                <div className={`bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 p-5 rounded-xl flex flex-col h-64 shadow-sm ${blocks.sunMoon ? 'lg:col-span-2' : 'lg:col-span-3'}`}>
+                  <h2 className="text-base font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2 mb-4">
+                    <CalendarDays className="w-5 h-5 text-emerald-500" /> Тижневий прогноз
+                  </h2>
+                  <div className="flex-1 bg-slate-50 dark:bg-slate-900 border border-dashed border-slate-300 dark:border-slate-700 rounded-lg flex items-center justify-center">
+                    <span className="text-slate-400 text-sm">Спрощений потижневий огляд</span>
+                  </div>
+                  <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-2 text-right">Оновлено 00:10:05 назад</p>
                 </div>
-                <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-2 text-right">Оновлено 00:10:05 назад</p>
-              </div>
-            )}
+              )}
 
-            {blocks.sunMoon && (
-              <div className={`bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 p-5 rounded-xl flex flex-col h-64 shadow-sm ${blocks.weekly ? 'lg:col-span-1' : 'lg:col-span-3'}`}>
-                <h2 className="text-base font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2 mb-4">
-                  <Sunrise className="w-5 h-5 text-emerald-500" /> Схід/Захід сонця та луни
-                </h2>
-                <div className="flex-1 grid grid-cols-2 gap-4">
-                  <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg flex flex-col items-center justify-center">
-                      <Sunrise className="w-8 h-8 text-amber-500 mb-2" />
-                      <span className="text-sm font-semibold">05:40 - 20:15</span>
+              {blocks.sunMoon && (
+                <div className={`bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 p-5 rounded-xl flex flex-col h-64 shadow-sm ${blocks.weekly ? 'lg:col-span-1' : 'lg:col-span-3'}`}>
+                  <h2 className="text-base font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2 mb-4">
+                    <Sunrise className="w-5 h-5 text-emerald-500" /> Схід/Захід сонця та луни
+                  </h2>
+                  <div className="flex-1 grid grid-cols-2 gap-4">
+                    <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg flex flex-col items-center justify-center">
+                        <Sunrise className="w-8 h-8 text-amber-500 mb-2" />
+                        <span className="text-sm font-semibold">05:40 - 20:15</span>
+                    </div>
+                    <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg flex flex-col items-center justify-center">
+                        <Moon className="w-8 h-8 text-indigo-400 mb-2" />
+                        <span className="text-sm font-semibold">22:10 - 06:30</span>
+                    </div>
                   </div>
-                  <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg flex flex-col items-center justify-center">
-                      <Moon className="w-8 h-8 text-indigo-400 mb-2" />
-                      <span className="text-sm font-semibold">22:10 - 06:30</span>
-                  </div>
+                  <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-2 text-right">Оновлено 00:10:05 назад</p>
                 </div>
-                <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-2 text-right">Оновлено 00:10:05 назад</p>
-              </div>
-            )}
-          </section>
+              )}
+            </section>
+          )}
         </>
       )}
 
-      {/* Нижній текст та Меню видимості */}
-      <div className="flex flex-col mt-4">
+      {/* Нижній текст та Меню видимості з рефом */}
+      <div className="flex flex-col mt-4" ref={controlsRef}>
         <div className="w-full h-px bg-slate-300 dark:bg-slate-700 mb-4"></div>
         <div className="max-w-3xl mb-6">
           <p className="text-sm font-medium text-emerald-600 dark:text-emerald-500 mb-2">
@@ -409,7 +465,6 @@ export const MeteoApp: React.FC = () => {
           </p>
         </div>
 
-        {/* Чекбокси/Кнопки в один ряд */}
         <div className="flex flex-wrap lg:flex-nowrap items-center gap-2 mb-4">
           <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 mr-2 w-full lg:w-auto">Відображення:</span>
           {[
