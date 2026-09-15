@@ -178,17 +178,17 @@ const getUaTime = () => {
         {/* Основна панель керування */}
         <div className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl shadow-sm mt-2 flex flex-col transition-all duration-300">
           
-          {/* Верхній блок (Локація + Оновлення) */}
-          <div className="p-4 sm:p-5 flex flex-col sm:flex-row gap-5 justify-between items-start">
+          {/* Верхній блок (Локація + Інфо + Оновлення) */}
+          <div className="p-4 sm:p-5 grid grid-cols-1 lg:grid-cols-3 gap-5 items-end">
             
             {/* Локація */}
-            <div className="relative w-full sm:w-1/3 min-w-[240px]" ref={locMenuRef}>
+            <div className="relative w-full" ref={locMenuRef}>
               <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5 block">
-                Локація
+                Оберіть локацію
               </label>
               <button 
                 onClick={() => setIsLocMenuOpen(!isLocMenuOpen)}
-                className="flex items-center justify-between w-full px-3 py-2.5 rounded-lg border border-slate-300 dark:border-slate-600 hover:border-emerald-500 bg-slate-50 dark:bg-slate-900 transition-colors"
+                className="flex items-center justify-between w-full px-3 py-2.5 rounded-lg border border-slate-300 dark:border-slate-600 hover:border-emerald-500 bg-slate-50 dark:bg-slate-900 transition-colors h-[42px]"
               >
                 <div className="flex items-center gap-2 overflow-hidden">
                   <MapPin className="w-4 h-4 text-emerald-500 shrink-0" />
@@ -215,17 +215,18 @@ const getUaTime = () => {
               )}
             </div>
 
-            {/* Правий підблок: Кнопка Оновлення + Вмикач додаткових параметрів */}
-            <div className="flex flex-col items-end gap-3 w-full sm:w-auto">
-              <button 
-                onClick={handleRefresh}
-                className="px-6 py-2.5 text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg transition-colors shadow-sm flex items-center justify-center gap-2 w-full sm:w-auto"
-              >
-                <RefreshCw className="w-4 h-4" />
-                Оновити прогноз
-              </button>
-              
-              <label className="flex items-center cursor-pointer gap-2 group mr-1">
+            {/* Інфо-текст (Середина) */}
+            <div className="w-full h-full flex items-center lg:px-2">
+              <div className="text-[10px] text-slate-500 dark:text-slate-400 leading-tight">
+                <p>Будь який прогноз погоди оновлюється 1 раз на 3 години. Для отримання свіжої інформації враховуйте розклад оновлень: 00:00, 03:00, 06:00, 09:00, 12:00, 15:00, 18:00, 21:00.</p>
+                <p className="mt-1">Не забувайте тиснути "Оновити прогноз погоди" для отримання свіжої інформації!</p>
+                <p className="mt-1 italic">*Прогноз на тиждень оновлюється автоматично раз на 48 годин.</p>
+              </div>
+            </div>
+
+            {/* Правий підблок: Вмикач + Оновлення */}
+            <div className="flex flex-col w-full lg:items-end justify-end h-full">
+              <label className="flex items-center lg:justify-end cursor-pointer gap-2 group mb-1.5 lg:mr-1">
                 <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 group-hover:text-slate-800 dark:group-hover:text-slate-200 transition-colors select-none">
                   Показати додаткові параметри
                 </span>
@@ -240,6 +241,14 @@ const getUaTime = () => {
                   <div className={`absolute left-0.5 bg-white w-3.5 h-3.5 rounded-full transition-transform ${showAdvancedSettings ? 'translate-x-3.5' : ''}`}></div>
                 </div>
               </label>
+              
+              <button 
+                onClick={handleRefresh}
+                className="px-6 py-2.5 text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg transition-colors shadow-sm flex items-center justify-center gap-2 w-full lg:w-auto h-[42px]"
+              >
+                <RefreshCw className="w-4 h-4" />
+                Оновити прогноз
+              </button>
             </div>
           </div>
 

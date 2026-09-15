@@ -30,23 +30,41 @@ export const Header: React.FC<{ onMenuClick?: () => void }> = ({ onMenuClick }) 
     }
   }, [theme])
 
-// Обробка скролінгу для мобільного меню
+// Обробка скролінгу для мобільного меню з авто-дотягуванням
   useEffect(() => {
+    let scrollTimeout: ReturnType<typeof setTimeout>
+
     const handleScroll = () => {
       const currentScrollY = window.scrollY
       
-      if (currentScrollY > 60) {
-        // Ховаємо, коли відчутно відійшли від верху
+      if (currentScrollY > 80) {
+        // Ховаємо з безпечним запасом
         setIsScrolled(true)
-      } else if (currentScrollY < 10) {
-        // Показуємо тільки коли повернулись майже в абсолютний нуль
+      } else if (currentScrollY === 0) {
+        // Відкриваємо елементи ВИКЛЮЧНО на абсолютному нулі сторінки
         setIsScrolled(false)
       }
-      // Між 10 та 60 стан не змінюється, що гарантує відсутність блимання
+
+      // Очищаємо попередній таймер при кожному мікрорусі
+      clearTimeout(scrollTimeout)
+      
+      // Встановлюємо новий таймер, який спрацює, коли скрол зупиниться
+      scrollTimeout = setTimeout(() => {
+        const finalScrollY = window.scrollY
+        // Якщо зупинилися "майже" нагорі (між 1 та 50 пікселями)
+        if (finalScrollY > 0 && finalScrollY < 50) {
+          // Плавно дотягуємо сторінку на самий верх
+          window.scrollTo({ top: 0, behavior: 'smooth' })
+          // Під час дотягування спрацює currentScrollY === 0 і меню плавно виїде
+        }
+      }, 150) // 150мс достатньо, щоб зрозуміти, що свайп завершився
     }
 
     window.addEventListener('scroll', handleScroll, { passive: true })
-    return () => window.removeEventListener('scroll', handleScroll)
+    return () => {
+      window.removeEventListener('scroll', handleScroll)
+      clearTimeout(scrollTimeout)
+    }
   }, [])
 
   const ThemeSwitcher = ({ isMobile }: { isMobile?: boolean }) => (
