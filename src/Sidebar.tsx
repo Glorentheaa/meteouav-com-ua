@@ -13,12 +13,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
   const overlayClass = isOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
 
   const navItems = [
-    { to: '/app', icon: CloudRain, label: 'МетеоКонсоль' },
-    { to: '/settings', icon: Settings, label: 'Налаштування' },
+    { to: '/app', icon: CloudRain, label: 'Консоль погоди' },
     { to: '/account', icon: User, label: 'Акаунт' },
     { to: '/donate', icon: Heart, label: 'Підтримати' },
     { to: '/about', icon: Info, label: 'Про проєкт' },
-    { to: '/legal', icon: ShieldAlert, label: 'Правова інформація' },
   ]
 
   return (
