@@ -10,9 +10,6 @@ export const Legal: React.FC = () => (
       <div className="flex flex-col space-y-8">
         {/* Вступ */}
         <div className="space-y-4">
-          <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-100">
-            Правова інформація та умови використання
-          </h2>
           <p className="text-slate-500 dark:text-slate-400">
             Використовуючи MeteoUAV, ви погоджуєтесь із наведеними нижче умовами. Проєкт створено для забезпечення зручного доступу до метеорологічних розрахунків, проте він залишається допоміжним інструментом, а не істиною в останній інстанції.
           </p>
