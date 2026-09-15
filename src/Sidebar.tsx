@@ -1,6 +1,6 @@
 import React from 'react'
 import { NavLink } from 'react-router-dom'
-import { X, CloudRain, Settings, User, Heart, Info, ShieldAlert } from 'lucide-react'
+import { X, CloudRain, User, Heart, Info } from 'lucide-react'
 
 interface SidebarProps {
   isOpen: boolean;
