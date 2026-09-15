@@ -33,9 +33,15 @@ export const Header: React.FC<{ onMenuClick?: () => void }> = ({ onMenuClick }) 
 // Обробка скролінгу для мобільного меню з авто-дотягуванням
   useEffect(() => {
     let scrollTimeout: ReturnType<typeof setTimeout>
+    let lastScrollY = window.scrollY
+    let isScrollingUp = false
 
     const handleScroll = () => {
       const currentScrollY = window.scrollY
+      
+      // Визначаємо напрямок скролу
+      isScrollingUp = currentScrollY < lastScrollY
+      lastScrollY = currentScrollY > 0 ? currentScrollY : 0
       
       if (currentScrollY > 80) {
         // Ховаємо з безпечним запасом
@@ -51,13 +57,12 @@ export const Header: React.FC<{ onMenuClick?: () => void }> = ({ onMenuClick }) 
       // Встановлюємо новий таймер, який спрацює, коли скрол зупиниться
       scrollTimeout = setTimeout(() => {
         const finalScrollY = window.scrollY
-        // Якщо зупинилися "майже" нагорі (між 1 та 50 пікселями)
-        if (finalScrollY > 0 && finalScrollY < 50) {
+        // Якщо зупинилися "майже" нагорі (між 1 та 50 пікселями) І напрямок був ВГОРУ
+        if (finalScrollY > 0 && finalScrollY < 50 && isScrollingUp) {
           // Плавно дотягуємо сторінку на самий верх
           window.scrollTo({ top: 0, behavior: 'smooth' })
-          // Під час дотягування спрацює currentScrollY === 0 і меню плавно виїде
         }
-      }, 150) // 150мс достатньо, щоб зрозуміти, що свайп завершився
+      }, 150)
     }
 
     window.addEventListener('scroll', handleScroll, { passive: true })
