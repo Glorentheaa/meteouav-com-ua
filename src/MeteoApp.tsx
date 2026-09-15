@@ -1,50 +1,74 @@
 import React, { useState, useRef, useEffect } from 'react'
-import { MapPin, Wind, Sunrise, Moon, CloudLightning, Activity, CalendarDays, ChevronDown, Map, List, Settings2 } from 'lucide-react'
+import { MapPin, Wind, Sunrise, Moon, CloudLightning, Activity, CalendarDays, ChevronDown, ChevronUp, Map, List, Settings2, RefreshCw } from 'lucide-react'
 
-// Компонент рядка налаштувань лімітів
-const LimitRow = ({ label, type = 'number', defaultValue, options }: any) => {
-  const borderColor = type === 'select' && defaultValue === 'Дозволено' ? 'border-l-emerald-500' : 'border-l-rose-500'
+// Компонент рядка налаштувань лімітів з єдиним розміром поля
+const LimitRow = ({ label, type = 'number', value, onChange, options }: any) => {
+  const isOff = value === 'вимкнути'
+  const borderColor = isOff ? 'border-l-emerald-500' : 'border-l-amber-500'
+
   return (
     <div className={`flex items-center justify-between gap-3 p-2 bg-slate-50 dark:bg-slate-900/50 rounded-lg border border-slate-200 dark:border-slate-700 border-l-4 ${borderColor}`}>
-      <span className="text-xs font-medium text-slate-700 dark:text-slate-300">{label}</span>
-      <div className="flex items-center gap-2">
+      <span className="text-xs font-medium text-slate-700 dark:text-slate-300 truncate pr-2">{label}</span>
+      <div className="flex items-center gap-2 shrink-0">
         {type === 'select' ? (
           <select 
-            defaultValue={defaultValue} 
-            className="w-24 sm:w-28 px-2 py-1 text-xs bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded focus:outline-none focus:border-emerald-500 dark:text-slate-200 transition-colors"
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            className="w-48 px-2 py-1.5 text-xs bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded focus:outline-none focus:border-emerald-500 dark:text-slate-200 transition-colors"
           >
             {options.map((opt: string) => <option key={opt} value={opt}>{opt}</option>)}
           </select>
         ) : (
-          <input 
-            type="number" 
-            defaultValue={defaultValue} 
-            className="w-16 sm:w-20 px-2 py-1 text-xs bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded focus:outline-none focus:border-emerald-500 text-center dark:text-slate-200 transition-colors" 
-          />
+          <div className="flex items-center w-48 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded focus-within:border-emerald-500 transition-colors overflow-hidden">
+            <input 
+              type="number" 
+              value={value} 
+              onChange={(e) => onChange(Number(e.target.value))}
+              className="w-full px-2 py-1.5 text-xs bg-transparent focus:outline-none text-center dark:text-slate-200 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" 
+            />
+            <div className="flex flex-col border-l border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-700/50 shrink-0">
+              <button 
+                onClick={() => onChange(Number(value) + 1)}
+                className="px-1.5 hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors border-b border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-300"
+              >
+                <ChevronUp className="w-3 h-3" />
+              </button>
+              <button 
+                onClick={() => onChange(Number(value) - 1)}
+                className="px-1.5 hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors text-slate-600 dark:text-slate-300"
+              >
+                <ChevronDown className="w-3 h-3" />
+              </button>
+            </div>
+          </div>
         )}
-        <button className="px-2 py-1 text-[10px] sm:text-xs font-semibold bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 rounded hover:bg-emerald-200 dark:hover:bg-emerald-500/30 transition-colors">
-          Зберегти
-        </button>
       </div>
     </div>
   )
 }
 
 export const MeteoApp: React.FC = () => {
-  // Базові значення
+  // Стани перемикачів
   const [depth, setDepth] = useState<'24' | '48'>('24')
-  const [detail, setDetail] = useState<'1' | '3'>('3')
-  const [levels, setLevels] = useState<'300' | '1000' | '3000'>('1000')
+  const [detail, setDetail] = useState<'1' | '3' | '6'>('3')
+  const [levels, setLevels] = useState<'300' | '500' | '800' | '3000'>('800')
   
+  // Стани попереджень (за замовчуванням)
+  const [wind, setWind] = useState(12)
+  const [gusts, setGusts] = useState(13)
+  const [precip, setPrecip] = useState('>0.1 мм')
+  const [fog, setFog] = useState('висока вірогідність')
+  const [humidity, setHumidity] = useState(98)
+  const [visibility, setVisibility] = useState(1)
+  const [minTemp, setMinTemp] = useState(-20)
+  const [maxTemp, setMaxTemp] = useState(40)
+
+  // UI стани
   const [isLocMenuOpen, setIsLocMenuOpen] = useState(false)
   const locMenuRef = useRef<HTMLDivElement>(null)
   
-  // Стани видимості блоків
   const [showAdvancedSettings, setShowAdvancedSettings] = useState(false)
-  const [showDeviceParams, setShowDeviceParams] = useState(false)
-  
-  // Ключ для примусового ререндера неконтрольованих інпутів
-  const [resetKey, setResetKey] = useState(0)
+  const [showWarnings, setShowWarnings] = useState(false)
 
   const todayDate = new Date().toLocaleDateString('uk-UA', { day: '2-digit', month: '2-digit', year: 'numeric' })
 
@@ -59,12 +83,21 @@ export const MeteoApp: React.FC = () => {
   }, [])
 
   const handleFactoryReset = () => {
-    // Скидання лівих параметрів
     setDepth('24')
     setDetail('3')
-    setLevels('1000')
-    // Форсування перемальовування LimitRow для скидання правих параметрів
-    setResetKey(prev => prev + 1)
+    setLevels('800')
+    setWind(12)
+    setGusts(13)
+    setPrecip('>0.1 мм')
+    setFog('висока вірогідність')
+    setHumidity(98)
+    setVisibility(1)
+    setMinTemp(-20)
+    setMaxTemp(40)
+  }
+
+  const handleSave = () => {
+    setShowAdvancedSettings(false)
   }
 
   return (
@@ -80,162 +113,148 @@ export const MeteoApp: React.FC = () => {
           </p>
         </div>
 
-        {/* Основна панель налаштувань */}
-        <div className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl shadow-sm mt-2 flex flex-col overflow-hidden transition-all duration-300">
+        {/* Основна панель керування */}
+        <div className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl shadow-sm mt-2 flex flex-col transition-all duration-300">
           
-          <div className="grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-slate-200 dark:divide-slate-700">
+          {/* Верхній блок (Локація + Оновлення) */}
+          <div className="p-4 sm:p-5 flex flex-col sm:flex-row gap-5 justify-between items-start">
             
-            {/* Ліва колонка (1/3) */}
-            <div className="p-4 sm:p-5 flex flex-col gap-5">
+            {/* Локація */}
+            <div className="relative w-full sm:w-1/3 min-w-[240px]" ref={locMenuRef}>
+              <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5 block">
+                Локація
+              </label>
+              <button 
+                onClick={() => setIsLocMenuOpen(!isLocMenuOpen)}
+                className="flex items-center justify-between w-full px-3 py-2.5 rounded-lg border border-slate-300 dark:border-slate-600 hover:border-emerald-500 bg-slate-50 dark:bg-slate-900 transition-colors"
+              >
+                <div className="flex items-center gap-2 overflow-hidden">
+                  <MapPin className="w-4 h-4 text-emerald-500 shrink-0" />
+                  <span className="font-medium text-sm text-slate-700 dark:text-slate-200 truncate">Запоріжжя</span>
+                </div>
+                <ChevronDown className={`w-4 h-4 text-slate-500 transition-transform ${isLocMenuOpen ? 'rotate-180' : ''}`} />
+              </button>
               
-              {/* Локація (Завжди видима) */}
-              <div className="relative" ref={locMenuRef}>
-                <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5 block">
-                  Локація
-                </label>
-                <button 
-                  onClick={() => setIsLocMenuOpen(!isLocMenuOpen)}
-                  className="flex items-center justify-between w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 hover:border-emerald-500 bg-slate-50 dark:bg-slate-900 transition-colors"
-                >
-                  <div className="flex items-center gap-2 overflow-hidden">
-                    <MapPin className="w-4 h-4 text-emerald-500 shrink-0" />
-                    <span className="font-medium text-sm text-slate-700 dark:text-slate-200 truncate">Запоріжжя</span>
+              {isLocMenuOpen && (
+                <div className="absolute top-[70px] left-0 right-0 z-50 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg shadow-xl overflow-hidden">
+                  <div className="p-1.5 border-b border-slate-100 dark:border-slate-800">
+                    <button className="w-full flex items-center gap-2 px-2 py-1.5 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded transition-colors"><Map className="w-4 h-4 text-emerald-500" /> Обрати на мапі</button>
+                    <button className="w-full flex items-center gap-2 px-2 py-1.5 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded transition-colors"><List className="w-4 h-4 text-emerald-500" /> Редагувати список місць</button>
                   </div>
-                  <ChevronDown className={`w-4 h-4 text-slate-500 transition-transform ${isLocMenuOpen ? 'rotate-180' : ''}`} />
-                </button>
-                <span className="text-[10px] text-slate-500 dark:text-slate-400 block mt-1 ml-1">Оберіть потрібну локацію</span>
-                
-                {isLocMenuOpen && (
-                  <div className="absolute top-[65px] left-0 right-0 z-50 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg shadow-xl overflow-hidden">
-                    <div className="p-1.5 border-b border-slate-100 dark:border-slate-800">
-                      <button className="w-full flex items-center gap-2 px-2 py-1.5 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded transition-colors"><Map className="w-4 h-4 text-emerald-500" /> Обрати на мапі</button>
-                      <button className="w-full flex items-center gap-2 px-2 py-1.5 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded transition-colors"><List className="w-4 h-4 text-emerald-500" /> Редагувати список місць</button>
-                    </div>
-                    <div className="p-1.5 max-h-48 overflow-y-auto">
-                      <div className="px-2 py-1 text-[10px] font-bold text-slate-400 uppercase">Закріплені</div>
-                      <button className="w-full text-left px-2 py-1.5 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded">Київ</button>
-                      <button className="w-full text-left px-2 py-1.5 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded">Запоріжжя</button>
-                      <div className="px-2 py-1 text-[10px] font-bold text-slate-400 uppercase mt-1">Збережені</div>
-                      <button className="w-full text-left px-2 py-1.5 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded">Дніпро</button>
-                      <button className="w-full text-left px-2 py-1.5 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded">Одеса</button>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Додаткові параметри лівої колонки (Ховаються) */}
-              {showAdvancedSettings && (
-                <div className="flex flex-col gap-5 animate-in fade-in slide-in-from-top-2 duration-200">
-                  <div className="flex flex-wrap gap-4">
-                    <div>
-                      <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5 block">Глибина (год)</label>
-                      <div className="flex bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded p-0.5">
-                        <button onClick={() => setDepth('24')} className={`px-4 py-1 text-xs font-medium rounded transition-colors ${depth === '24' ? 'bg-white dark:bg-slate-700 shadow-sm text-emerald-600 dark:text-emerald-400' : 'text-slate-600 dark:text-slate-400'}`}>24</button>
-                        <button onClick={() => setDepth('48')} className={`px-4 py-1 text-xs font-medium rounded transition-colors ${depth === '48' ? 'bg-white dark:bg-slate-700 shadow-sm text-emerald-600 dark:text-emerald-400' : 'text-slate-600 dark:text-slate-400'}`}>48</button>
-                      </div>
-                    </div>
-                    <div>
-                      <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5 block">Деталізація (год)</label>
-                      <div className="flex bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded p-0.5">
-                        <button onClick={() => setDetail('1')} className={`px-4 py-1 text-xs font-medium rounded transition-colors ${detail === '1' ? 'bg-white dark:bg-slate-700 shadow-sm text-emerald-600 dark:text-emerald-400' : 'text-slate-600 dark:text-slate-400'}`}>1</button>
-                        <button onClick={() => setDetail('3')} className={`px-4 py-1 text-xs font-medium rounded transition-colors ${detail === '3' ? 'bg-white dark:bg-slate-700 shadow-sm text-emerald-600 dark:text-emerald-400' : 'text-slate-600 dark:text-slate-400'}`}>3</button>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5 block">Ешелони (до ... м)</label>
-                    <div className="flex bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded p-0.5 w-max">
-                      <button onClick={() => setLevels('300')} className={`px-4 py-1 text-xs font-medium rounded transition-colors ${levels === '300' ? 'bg-white dark:bg-slate-700 shadow-sm text-emerald-600 dark:text-emerald-400' : 'text-slate-600 dark:text-slate-400'}`}>300</button>
-                      <button onClick={() => setLevels('1000')} className={`px-4 py-1 text-xs font-medium rounded transition-colors ${levels === '1000' ? 'bg-white dark:bg-slate-700 shadow-sm text-emerald-600 dark:text-emerald-400' : 'text-slate-600 dark:text-slate-400 border border-transparent'}`}>1000</button>
-                      <button onClick={() => setLevels('3000')} className={`px-4 py-1 text-xs font-medium rounded transition-colors ${levels === '3000' ? 'bg-white dark:bg-slate-700 shadow-sm text-emerald-600 dark:text-emerald-400' : 'text-slate-600 dark:text-slate-400'}`}>3000</button>
-                    </div>
+                  <div className="p-1.5 max-h-48 overflow-y-auto">
+                    <div className="px-2 py-1 text-[10px] font-bold text-slate-400 uppercase">Закріплені</div>
+                    <button className="w-full text-left px-2 py-1.5 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded">Київ</button>
+                    <button className="w-full text-left px-2 py-1.5 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded">Запоріжжя</button>
+                    <div className="px-2 py-1 text-[10px] font-bold text-slate-400 uppercase mt-1">Збережені</div>
+                    <button className="w-full text-left px-2 py-1.5 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded">Дніпро</button>
+                    <button className="w-full text-left px-2 py-1.5 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded">Одеса</button>
                   </div>
                 </div>
               )}
-
             </div>
 
-            {/* Права колонка (2/3) */}
-            <div className="p-4 sm:p-5 md:col-span-2 flex flex-col gap-4">
+            {/* Правий підблок: Кнопка Оновлення + Вмикач додаткових параметрів */}
+            <div className="flex flex-col items-end gap-3 w-full sm:w-auto">
+              <button className="px-6 py-2.5 text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg transition-colors shadow-sm flex items-center justify-center gap-2 w-full sm:w-auto">
+                <RefreshCw className="w-4 h-4" />
+                Оновити прогноз
+              </button>
               
-              {/* Головний тумблер увімкнення налаштувань */}
-              <label className="flex items-center cursor-pointer w-max gap-3">
-                <div className="relative">
+              <label className="flex items-center cursor-pointer gap-2 group mr-1">
+                <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 group-hover:text-slate-800 dark:group-hover:text-slate-200 transition-colors select-none">
+                  Показати додаткові параметри
+                </span>
+                <div className="relative flex items-center">
                   <input 
                     type="checkbox" 
                     className="sr-only" 
                     checked={showAdvancedSettings} 
                     onChange={() => setShowAdvancedSettings(!showAdvancedSettings)} 
                   />
-                  <div className={`block w-10 h-6 rounded-full transition-colors ${showAdvancedSettings ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-slate-600'}`}></div>
-                  <div className={`absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform ${showAdvancedSettings ? 'translate-x-4' : ''}`}></div>
+                  <div className={`block w-8 h-4.5 rounded-full transition-colors ${showAdvancedSettings ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-slate-600'}`}></div>
+                  <div className={`absolute left-0.5 bg-white w-3.5 h-3.5 rounded-full transition-transform ${showAdvancedSettings ? 'translate-x-3.5' : ''}`}></div>
                 </div>
-                <span className="text-sm font-bold text-slate-800 dark:text-slate-200 select-none">
-                  Увімкнути додаткові налаштування
-                </span>
               </label>
-              
-              {/* Блок з параметрами засобу */}
-              {showAdvancedSettings && (
-                <div className="flex flex-col gap-3 animate-in fade-in slide-in-from-top-2 duration-200">
-                  
-                  {/* Шапка/Тумблер Параметрів Засобу */}
-                  <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-900/50 rounded-lg border border-slate-200 dark:border-slate-700">
-                    <div className="flex items-center gap-2">
-                      <Settings2 className="w-4 h-4 text-emerald-500" />
-                      <span className="text-sm font-bold text-slate-800 dark:text-slate-200">Параметри засобу / заборона вильоту</span>
-                    </div>
-                    <label className="flex items-center cursor-pointer gap-3">
-                      <div className="relative">
-                        <input 
-                          type="checkbox" 
-                          className="sr-only" 
-                          checked={showDeviceParams} 
-                          onChange={() => setShowDeviceParams(!showDeviceParams)} 
-                        />
-                        <div className={`block w-10 h-6 rounded-full transition-colors ${showDeviceParams ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-slate-600'}`}></div>
-                        <div className={`absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform ${showDeviceParams ? 'translate-x-4' : ''}`}></div>
-                      </div>
-                    </label>
-                  </div>
-
-                  {/* Список лімітів */}
-                  {showDeviceParams && (
-                    <div key={resetKey} className="flex flex-col gap-2 animate-in fade-in slide-in-from-top-2 duration-200">
-                      <LimitRow label="Макс. вітер (м/с)" defaultValue="12" />
-                      <LimitRow label="Макс. пориви (м/с)" defaultValue="14" />
-                      <LimitRow label="Опади / Дощ" type="select" defaultValue="Заборонено" options={["Заборонено", "Дозволено"]} />
-                      <LimitRow label="Макс. вологість (%)" defaultValue="98" />
-                      <LimitRow label="Наявність туману" type="select" defaultValue="Заборонено" options={["Заборонено", "Дозволено"]} />
-                      <LimitRow label="Мін. темп. (°C)" defaultValue="-20" />
-                      <LimitRow label="Макс. темп. (°C)" defaultValue="40" />
-                    </div>
-                  )}
-
-                  {/* Кнопка скидання (завжди видима під шапкою, якщо увімкнені додаткові налаштування загалом) */}
-                  <div className="flex justify-end mt-1">
-                    <button 
-                      onClick={handleFactoryReset}
-                      className="px-4 py-1.5 text-xs font-semibold bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-md transition-colors shadow-sm"
-                    >
-                      Скинути до заводських
-                    </button>
-                  </div>
-
-                </div>
-              )}
-
             </div>
           </div>
 
-          {/* Кнопка Оновлення (Низ блоку) */}
-          <div className="p-4 sm:p-5 border-t border-slate-200 dark:border-slate-700 flex justify-center bg-slate-50/50 dark:bg-slate-900/20">
-            <button className="px-8 py-2.5 sm:py-3 text-sm sm:text-base font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg transition-colors shadow-sm flex items-center justify-center gap-2 w-full sm:w-auto">
-              <Activity className="w-5 h-5" />
-              Оновити прогноз погоди
-            </button>
-          </div>
+          {/* Розгорнутий блок додаткових налаштувань */}
+          {showAdvancedSettings && (
+            <div className="p-4 sm:p-5 flex flex-col gap-6 bg-slate-50/50 dark:bg-slate-900/30 border-t border-slate-200 dark:border-slate-700 animate-in fade-in slide-in-from-top-4 duration-300">
+              
+              {/* Перемикачі в ряд */}
+              <div className="flex flex-wrap gap-5 lg:gap-8">
+                <div>
+                  <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5 block">Глибина (год)</label>
+                  <div className="flex bg-slate-200/50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded p-0.5 shadow-inner">
+                    {['24', '48'].map((val) => (
+                      <button key={val} onClick={() => setDepth(val as any)} className={`px-4 py-1 text-xs font-medium rounded transition-colors ${depth === val ? 'bg-white dark:bg-slate-700 shadow-sm text-emerald-600 dark:text-emerald-400 border border-emerald-500/30' : 'text-slate-600 dark:text-slate-400 border border-transparent'}`}>{val}</button>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5 block">Деталізація (год)</label>
+                  <div className="flex bg-slate-200/50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded p-0.5 shadow-inner">
+                    {['1', '3', '6'].map((val) => (
+                      <button key={val} onClick={() => setDetail(val as any)} className={`px-4 py-1 text-xs font-medium rounded transition-colors ${detail === val ? 'bg-white dark:bg-slate-700 shadow-sm text-emerald-600 dark:text-emerald-400 border border-emerald-500/30' : 'text-slate-600 dark:text-slate-400 border border-transparent'}`}>{val}</button>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5 block">Ешелони (до ... м)</label>
+                  <div className="flex bg-slate-200/50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded p-0.5 shadow-inner flex-wrap">
+                    {['300', '500', '800', '3000'].map((val) => (
+                      <button key={val} onClick={() => setLevels(val as any)} className={`px-4 py-1 text-xs font-medium rounded transition-colors ${levels === val ? 'bg-white dark:bg-slate-700 shadow-sm text-emerald-600 dark:text-emerald-400 border border-emerald-500/30' : 'text-slate-600 dark:text-slate-400 border border-transparent'}`}>{val}</button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Підменю "Попередження" */}
+              <div className="flex flex-col gap-3">
+                <button 
+                  onClick={() => setShowWarnings(!showWarnings)}
+                  className="flex items-center justify-between w-full max-w-sm p-3 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 hover:border-emerald-500/50 transition-colors shadow-sm"
+                >
+                  <div className="flex items-center gap-2">
+                    <Settings2 className="w-4 h-4 text-emerald-500" />
+                    <span className="text-sm font-bold text-slate-800 dark:text-slate-200">Попередження</span>
+                  </div>
+                  <ChevronDown className={`w-4 h-4 text-slate-500 transition-transform ${showWarnings ? 'rotate-180' : ''}`} />
+                </button>
+
+                {showWarnings && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-2 gap-3 mt-1 animate-in fade-in slide-in-from-top-2 duration-200">
+                    <LimitRow label="Макс. вітер (м/с)" value={wind} onChange={setWind} />
+                    <LimitRow label="Макс. пориви (м/с)" value={gusts} onChange={setGusts} />
+                    <LimitRow label="Опади" type="select" value={precip} onChange={setPrecip} options={[">0.1 мм", ">0.3 мм", "вимкнути"]} />
+                    <LimitRow label="Наявність туману" type="select" value={fog} onChange={setFog} options={["висока вірогідність", "мала вірогідність", "вимкнути"]} />
+                    <LimitRow label="Вологість вище (%)" value={humidity} onChange={setHumidity} />
+                    <LimitRow label="Видимість менше (км)" value={visibility} onChange={setVisibility} />
+                    <LimitRow label="Мін. темп. (°C)" value={minTemp} onChange={setMinTemp} />
+                    <LimitRow label="Макс. темп. (°C)" value={maxTemp} onChange={setMaxTemp} />
+                  </div>
+                )}
+              </div>
+
+              {/* Кнопки збереження та скидання */}
+              <div className="flex justify-end gap-3 pt-2">
+                <button 
+                  onClick={handleFactoryReset}
+                  className="px-5 py-2 text-xs font-semibold bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-lg transition-colors shadow-sm"
+                >
+                  Скинути до базових
+                </button>
+                <button 
+                  onClick={handleSave}
+                  className="px-6 py-2 text-xs font-semibold bg-emerald-100 dark:bg-emerald-500/20 hover:bg-emerald-200 dark:hover:bg-emerald-500/30 text-emerald-700 dark:text-emerald-400 rounded-lg transition-colors shadow-sm"
+                >
+                  Зберегти
+                </button>
+              </div>
+
+            </div>
+          )}
         </div>
       </header>
 
