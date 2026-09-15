@@ -109,7 +109,7 @@ export const Header: React.FC<{ onMenuClick?: () => void }> = ({ onMenuClick }) 
           </div>
 
           {/* Контейнер, який ховається при скролінгу на мобілках */}
-          <div className={`flex flex-col sm:flex-row items-center w-full sm:w-auto gap-3 transition-all duration-300 origin-top overflow-hidden sm:overflow-visible ${isScrolled ? 'max-h-0 opacity-0 sm:max-h-20 sm:opacity-100 mt-0' : 'max-h-40 opacity-100 mt-3 sm:mt-0'}`}>
+          <div className={`flex flex-col sm:flex-row items-center w-full sm:w-auto gap-3 transition-all duration-300 ease-in-out origin-top overflow-hidden sm:overflow-visible ${isScrolled ? 'max-h-0 opacity-0 sm:max-h-20 sm:opacity-100 mt-0 scale-y-95 sm:scale-y-100' : 'max-h-[100px] opacity-100 mt-3 sm:mt-0 scale-y-100'}`}>
             <ThemeSwitcher isMobile />
             
             {!isHome && (
