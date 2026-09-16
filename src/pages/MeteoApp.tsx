@@ -8,7 +8,9 @@ import { useMeteoBlocks } from '../features/meteo/hooks/useMeteoBlocks'
 import { getUaTime, getForecastDatesText } from '../utils/dateUtils'
 import { getActiveLocation, setActiveLocation } from '../features/meteo/utils/geoUtils'
 import type { SavedLocation } from '../features/meteo/types/location'
-import { buildMeteoPayload, sendMeteoRequest } from '../services/meteoService'
+import type { FullMeteoForecastResponse } from '../features/meteo/types/meteoData'
+import { buildMeteoPayload, sendMeteoRequest, getCachedForecast } from '../services/meteoService'
+import { generateMockForecast } from '../features/meteo/utils/mockMeteoData'
 
 // Components
 import { LocationSelector } from '../features/meteo/components/LocationSelector'
@@ -57,6 +59,12 @@ export const MeteoApp: React.FC = () => {
   } = useMeteoBlocks()
 
   const [currentLocation, setCurrentLocation] = useState<SavedLocation>(() => getActiveLocation())
+  const [forecastData, setForecastData] = useState<FullMeteoForecastResponse>(() => {
+    const cached = getCachedForecast(currentLocation.sectorId)
+    if (cached) return cached
+    return generateMockForecast(currentLocation.sectorId, currentLocation.name)
+  })
+
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [statusFeedback, setStatusFeedback] = useState<{
     type: 'success' | 'error'
@@ -89,6 +97,9 @@ export const MeteoApp: React.FC = () => {
 
     try {
       const res = await sendMeteoRequest(payload)
+      if (res.data) {
+        setForecastData(res.data)
+      }
       setLastUpdated(getUaTime())
       setForecastDates(getForecastDatesText())
       setStatusFeedback({
@@ -150,6 +161,8 @@ export const MeteoApp: React.FC = () => {
               onSelectLocation={(loc) => {
                 setCurrentLocation(loc)
                 setActiveLocation(loc)
+                const cached = getCachedForecast(loc.sectorId)
+                setForecastData(cached || generateMockForecast(loc.sectorId, loc.name))
               }}
             />
 
@@ -245,10 +258,33 @@ export const MeteoApp: React.FC = () => {
 
           {showGrid1 && (
             <section className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 animate-in fade-in slide-in-from-top-2 duration-300">
-              {blocks.shortTerm && <ShortTermCard />}
-              {blocks.wind && <WindAltitudeCard />}
-              {blocks.windows && <FlightWindowsCard />}
-              {blocks.conclusion && <MeteorologistCard />}
+              {blocks.shortTerm && (
+                <ShortTermCard
+                  hourly={forecastData?.hourly}
+                  warnings={warnings}
+                  depth={depth}
+                  detail={detail}
+                />
+              )}
+              {blocks.wind && (
+                <WindAltitudeCard
+                  hourly={forecastData?.hourly}
+                  warnings={warnings}
+                  levels={levels}
+                  depth={depth}
+                  detail={detail}
+                />
+              )}
+              {blocks.windows && (
+                <FlightWindowsCard
+                  hourly={forecastData?.hourly}
+                  warnings={warnings}
+                  levels={levels}
+                />
+              )}
+              {blocks.conclusion && (
+                <MeteorologistCard aiSummary={forecastData?.aiSummary} />
+              )}
             </section>
           )}
         </>
@@ -267,10 +303,16 @@ export const MeteoApp: React.FC = () => {
           {showGrid2 && (
             <section className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 animate-in fade-in slide-in-from-top-2 duration-300">
               {blocks.weekly && (
-                <WeeklyForecastCard isSunMoonVisible={blocks.sunMoon} />
+                <WeeklyForecastCard
+                  isSunMoonVisible={blocks.sunMoon}
+                  chartUrl={forecastData?.weeklyChartUrl}
+                />
               )}
               {blocks.sunMoon && (
-                <SunMoonCard isWeeklyVisible={blocks.weekly} />
+                <SunMoonCard
+                  isWeeklyVisible={blocks.weekly}
+                  astronomy={forecastData?.astronomy}
+                />
               )}
             </section>
           )}

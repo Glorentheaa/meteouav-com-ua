@@ -1,5 +1,7 @@
 import type { SavedLocation } from '../features/meteo/types/location'
 import type { ForecastDepth, ForecastDetail, FlightLevels, MeteoWarnings } from '../features/meteo/types/meteo'
+import type { FullMeteoForecastResponse } from '../features/meteo/types/meteoData'
+import { generateMockForecast } from '../features/meteo/utils/mockMeteoData'
 import { snapToSector } from '../features/meteo/utils/geoUtils'
 
 export interface MeteoRequestPayload {
@@ -47,11 +49,41 @@ export interface MeteoRequestPayload {
 export interface MeteoResponse {
   success: boolean
   message: string
-  data?: unknown
+  data?: FullMeteoForecastResponse
   error?: string
 }
 
 export const METEO_LAST_PAYLOAD_KEY = 'meteo_last_n8n_payload'
+export const METEO_CACHED_FORECAST_KEY = 'meteo_cached_forecast_data'
+
+/**
+ * Отримання закешованого прогнозу з localStorage
+ */
+export function getCachedForecast(sectorId?: string): FullMeteoForecastResponse | null {
+  try {
+    const raw = localStorage.getItem(METEO_CACHED_FORECAST_KEY)
+    if (!raw) return null
+    const parsed: FullMeteoForecastResponse = JSON.parse(raw)
+    if (sectorId && parsed.sectorId !== sectorId) {
+      return null
+    }
+    return parsed
+  } catch (e) {
+    console.error('Помилка читання закешованого прогнозу:', e)
+    return null
+  }
+}
+
+/**
+ * Збереження прогнозу в localStorage
+ */
+export function saveCachedForecast(data: FullMeteoForecastResponse): void {
+  try {
+    localStorage.setItem(METEO_CACHED_FORECAST_KEY, JSON.stringify(data))
+  } catch (e) {
+    console.error('Помилка збереження прогнозу в кеш:', e)
+  }
+}
 
 /**
  * Побудова стандартизованого об'єкта запиту для n8n
@@ -115,7 +147,7 @@ export function buildMeteoPayload(params: {
 }
 
 /**
- * Відправка запиту на n8n webhook або імітація / логування за відсутності URL
+ * Відправка запиту на n8n webhook або повернення мокових даних у демо-режимі
  */
 export async function sendMeteoRequest(payload: MeteoRequestPayload): Promise<MeteoResponse> {
   const webhookUrl = import.meta.env.VITE_N8N_WEATHER_WEBHOOK_URL
@@ -140,7 +172,7 @@ export async function sendMeteoRequest(payload: MeteoRequestPayload): Promise<Me
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Accept': 'application/json',
+          Accept: 'application/json',
         },
         body: JSON.stringify(payload),
       })
@@ -149,7 +181,8 @@ export async function sendMeteoRequest(payload: MeteoRequestPayload): Promise<Me
         throw new Error(`n8n webhook error: ${response.status} ${response.statusText}`)
       }
 
-      const result = await response.json()
+      const result: FullMeteoForecastResponse = await response.json()
+      saveCachedForecast(result)
       return {
         success: true,
         message: 'Прогноз успішно отримано від n8n',
@@ -157,18 +190,24 @@ export async function sendMeteoRequest(payload: MeteoRequestPayload): Promise<Me
       }
     } catch (err) {
       console.error('Помилка відправки на n8n webhook:', err)
+      // У разі помилки зв'язку повертаємо згенерований локально фолбек-прогноз
+      const fallbackData = generateMockForecast(payload.location.sector_id, payload.location.settlement)
+      saveCachedForecast(fallbackData)
       return {
         success: false,
-        message: err instanceof Error ? err.message : 'Помилка з\'єднання з n8n',
-        error: String(err),
+        message: `Помилка з'єднання з n8n (${err instanceof Error ? err.message : String(err)}). Показано розрахунковий прогноз.`,
+        data: fallbackData,
       }
     }
   }
 
-  // За відсутності налаштованого вебхука повертаємо готовність даних
+  // Якщо webhookUrl ще не задано (демо-режим до запуску n8n):
+  const mockData = generateMockForecast(payload.location.sector_id, payload.location.settlement)
+  saveCachedForecast(mockData)
+
   return {
     success: true,
-    message: `Дані для сектора ${payload.location.sector_id} сформовано. n8n webhook не підключено (демо-режим).`,
-    data: payload,
+    message: `Дані для сектора ${payload.location.sector_id} сформовано (демо-режим без n8n).`,
+    data: mockData,
   }
 }
