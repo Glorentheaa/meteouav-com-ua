@@ -1,6 +1,8 @@
 import React from 'react'
 import { NavLink } from 'react-router-dom'
-import { X, CloudRain, User, Heart, Info } from 'lucide-react'
+import { X, CloudRain, LogIn, Heart, Info, Crown } from 'lucide-react'
+import { useAuth } from '../../context/useAuth'
+import { getInitials } from '../../utils/gravatar'
 
 interface SidebarProps {
   isOpen: boolean
@@ -8,17 +10,25 @@ interface SidebarProps {
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
+  const { user, profile, avatarUrl, isPro } = useAuth()
+
   const sidebarClass = isOpen ? 'translate-x-0' : '-translate-x-full'
   const overlayClass = isOpen
     ? 'opacity-100 pointer-events-auto'
     : 'opacity-0 pointer-events-none'
 
-  const navItems = [
-    { to: '/app', icon: CloudRain, label: 'Консоль погоди' },
-    { to: '/account', icon: User, label: 'Акаунт' },
-    { to: '/donate', icon: Heart, label: 'Підтримати' },
-    { to: '/about', icon: Info, label: 'Про проєкт' },
-  ]
+  // Динамічний пункт меню: "Авторизуватись" для гостей або нікнейм для авторизованих
+  const accountItem = user
+    ? {
+        to: '/account',
+        label: profile?.nickname || user.email?.split('@')[0] || 'Мій профіль',
+        isAuthorized: true,
+      }
+    : {
+        to: '/auth',
+        label: 'Авторизуватись',
+        isAuthorized: false,
+      }
 
   return (
     <>
@@ -48,23 +58,96 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
         </div>
 
         <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-1">
-          {navItems.map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              onClick={onClose}
-              className={({ isActive }) =>
-                `flex items-center gap-3 px-3 py-2.5 rounded-lg text-base font-medium transition-colors ${
-                  isActive
-                    ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
-                    : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-white'
-                }`
-              }
-            >
-              <item.icon className="w-5 h-5" />
-              {item.label}
-            </NavLink>
-          ))}
+          {/* Консоль погоди */}
+          <NavLink
+            to="/app"
+            onClick={onClose}
+            className={({ isActive }) =>
+              `flex items-center gap-3 px-3 py-2.5 rounded-lg text-base font-medium transition-colors ${
+                isActive
+                  ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
+                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-white'
+              }`
+            }
+          >
+            <CloudRain className="w-5 h-5" />
+            Консоль погоди
+          </NavLink>
+
+          {/* Пункт акаунту: Авторизуватись або нікнейм користувача */}
+          <NavLink
+            to={accountItem.to}
+            onClick={onClose}
+            className={({ isActive }) =>
+              `flex items-center justify-between px-3 py-2.5 rounded-lg text-base font-medium transition-colors ${
+                isActive
+                  ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
+                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-white'
+              }`
+            }
+          >
+            <div className="flex items-center gap-3 overflow-hidden">
+              {accountItem.isAuthorized ? (
+                <div className="w-6 h-6 rounded-full overflow-hidden bg-slate-200 dark:bg-slate-800 shrink-0 flex items-center justify-center border border-emerald-500/50">
+                  {avatarUrl ? (
+                    <img
+                      src={avatarUrl}
+                      alt="Avatar"
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        e.currentTarget.style.display = 'none'
+                      }}
+                    />
+                  ) : (
+                    <span className="text-[10px] font-bold text-slate-700 dark:text-slate-300">
+                      {getInitials(profile?.nickname || user?.email)}
+                    </span>
+                  )}
+                </div>
+              ) : (
+                <LogIn className="w-5 h-5" />
+              )}
+              <span className="truncate">{accountItem.label}</span>
+            </div>
+
+            {accountItem.isAuthorized && isPro && (
+              <span className="shrink-0 flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30">
+                <Crown className="w-3 h-3" /> PRO
+              </span>
+            )}
+          </NavLink>
+
+          {/* Підтримати */}
+          <NavLink
+            to="/donate"
+            onClick={onClose}
+            className={({ isActive }) =>
+              `flex items-center gap-3 px-3 py-2.5 rounded-lg text-base font-medium transition-colors ${
+                isActive
+                  ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
+                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-white'
+              }`
+            }
+          >
+            <Heart className="w-5 h-5" />
+            Підтримати
+          </NavLink>
+
+          {/* Про проєкт */}
+          <NavLink
+            to="/about"
+            onClick={onClose}
+            className={({ isActive }) =>
+              `flex items-center gap-3 px-3 py-2.5 rounded-lg text-base font-medium transition-colors ${
+                isActive
+                  ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
+                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-white'
+              }`
+            }
+          >
+            <Info className="w-5 h-5" />
+            Про проєкт
+          </NavLink>
         </nav>
       </aside>
     </>

@@ -1,15 +1,416 @@
-import React from 'react'
+import React, { useState } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
+import {
+  User as UserIcon,
+  Mail,
+  Calendar,
+  KeyRound,
+  MapPin,
+  Heart,
+  Crown,
+  LogOut,
+  ChevronRight,
+  CheckCircle2,
+  AlertCircle,
+  Loader2,
+  Edit2,
+  Check,
+  X,
+} from 'lucide-react'
+import { useAuth } from '../context/useAuth'
+import { getInitials } from '../utils/gravatar'
 
-export const Account: React.FC = () => (
-  <div className="w-full flex flex-col gap-6">
-    <header className="border-b border-slate-300 dark:border-slate-800 pb-4">
-      <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Акаунт</h1>
-      <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
-        Управління профілем користувача.
-      </p>
-    </header>
-    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 rounded-xl shadow-sm dark:shadow-none">
-      <p className="text-slate-500 dark:text-slate-400">Сторінка в розробці...</p>
+export const Account: React.FC = () => {
+  const navigate = useNavigate()
+  const {
+    user,
+    profile,
+    avatarUrl,
+    loading,
+    isPro,
+    proUntil,
+    signOut,
+    updatePassword,
+    updateNickname,
+  } = useAuth()
+
+  // Стан форми зміни пароля
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [isChangingPassword, setIsChangingPassword] = useState(false)
+  const [passwordStatus, setPasswordStatus] = useState<{
+    type: 'success' | 'error'
+    text: string
+  } | null>(null)
+
+  // Стан редагування нікнейму
+  const [isEditingNickname, setIsEditingNickname] = useState(false)
+  const [nicknameInput, setNicknameInput] = useState('')
+  const [isSavingNickname, setIsSavingNickname] = useState(false)
+
+  // Якщо дані ще завантажуються
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[50vh]">
+        <Loader2 className="w-8 h-8 animate-spin text-emerald-500" />
+      </div>
+    )
+  }
+
+  // Якщо користувач не увійшов
+  if (!user) {
+    return (
+      <div className="w-full max-w-md mx-auto py-12 px-4 text-center">
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-8 shadow-sm">
+          <div className="w-16 h-16 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-4 text-slate-400">
+            <UserIcon className="w-8 h-8" />
+          </div>
+          <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-2">
+            Ви не авторизовані
+          </h2>
+          <p className="text-sm text-slate-600 dark:text-slate-400 mb-6">
+            Увійдіть або створіть новий акаунт, щоб керувати профілем та збереженими точками.
+          </p>
+          <Link
+            to="/auth"
+            className="inline-flex items-center justify-center gap-2 w-full py-3 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl shadow transition-all"
+          >
+            Авторизуватись
+          </Link>
+        </div>
+      </div>
+    )
+  }
+
+  const handlePasswordSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setPasswordStatus(null)
+
+    if (newPassword.length < 6) {
+      setPasswordStatus({
+        type: 'error',
+        text: 'Новий пароль повинен містити не менше 6 символів.',
+      })
+      return
+    }
+
+    if (newPassword !== confirmPassword) {
+      setPasswordStatus({
+        type: 'error',
+        text: 'Паролі не збігаються.',
+      })
+      return
+    }
+
+    setIsChangingPassword(true)
+    const { error } = await updatePassword(newPassword)
+    setIsChangingPassword(false)
+
+    if (error) {
+      setPasswordStatus({
+        type: 'error',
+        text: error.message || 'Помилка зміни паролю.',
+      })
+    } else {
+      setPasswordStatus({
+        type: 'success',
+        text: 'Пароль успішно змінено!',
+      })
+      setNewPassword('')
+      setConfirmPassword('')
+    }
+  }
+
+  const handleStartEditNickname = () => {
+    setNicknameInput(profile?.nickname || '')
+    setIsEditingNickname(true)
+  }
+
+  const handleSaveNickname = async () => {
+    if (!nicknameInput.trim()) return
+    setIsSavingNickname(true)
+    await updateNickname(nicknameInput.trim())
+    setIsSavingNickname(false)
+    setIsEditingNickname(false)
+  }
+
+  const handleSignOut = async () => {
+    await signOut()
+    navigate('/auth')
+  }
+
+  // Форматування дати створення акаунта
+  const registrationDate = user.created_at
+    ? new Date(user.created_at).toLocaleDateString('uk-UA', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+      })
+    : '—'
+
+  // Форматування дати закінчення PRO
+  const proExpirationDate = proUntil
+    ? new Date(proUntil).toLocaleDateString('uk-UA', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+      })
+    : null
+
+  return (
+    <div className="w-full max-w-3xl mx-auto flex flex-col gap-6 py-4">
+      {/* Заголовок */}
+      <header className="border-b border-slate-300 dark:border-slate-800 pb-4 flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Мій акаунт</h1>
+          <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+            Керування реєстраційними даними та безпекою.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={handleSignOut}
+          className="flex items-center gap-2 px-3.5 py-2 text-sm font-medium text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/30 hover:bg-rose-100 dark:hover:bg-rose-900/40 rounded-xl transition-colors border border-rose-200 dark:border-rose-900/50"
+        >
+          <LogOut className="w-4 h-4" />
+          <span>Вийти</span>
+        </button>
+      </header>
+
+      {/* 1. Блок профілю користувача */}
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 rounded-2xl shadow-sm space-y-6">
+        <div className="flex flex-col sm:flex-row items-center sm:items-start gap-5">
+          {/* Аватар з Gravatar за адресою пошти */}
+          <div className="relative group shrink-0">
+            <div className="w-20 h-20 rounded-full overflow-hidden border-2 border-emerald-500 shadow-md bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
+              {avatarUrl ? (
+                <img
+                  src={avatarUrl}
+                  alt={profile?.nickname || 'Avatar'}
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    // Якщо Gravatar не завантажився — показуємо заглушку
+                    e.currentTarget.style.display = 'none'
+                  }}
+                />
+              ) : (
+                <span className="text-2xl font-bold text-slate-700 dark:text-slate-200">
+                  {getInitials(profile?.nickname || user.email)}
+                </span>
+              )}
+            </div>
+            {isPro && (
+              <div className="absolute -bottom-1 -right-1 bg-amber-500 text-slate-950 p-1 rounded-full shadow border-2 border-white dark:border-slate-900">
+                <Crown className="w-3.5 h-3.5" />
+              </div>
+            )}
+          </div>
+
+          <div className="flex-1 text-center sm:text-left space-y-2">
+            <div className="flex flex-col sm:flex-row items-center gap-2">
+              {isEditingNickname ? (
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={nicknameInput}
+                    onChange={(e) => setNicknameInput(e.target.value)}
+                    className="px-3 py-1 text-lg font-bold bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleSaveNickname}
+                    disabled={isSavingNickname}
+                    className="p-1.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700"
+                    title="Зберегти"
+                  >
+                    <Check className="w-4 h-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIsEditingNickname(false)}
+                    className="p-1.5 bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-lg hover:bg-slate-300"
+                    title="Скасувати"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <h2 className="text-xl font-bold text-slate-900 dark:text-white">
+                    {profile?.nickname || 'Користувач'}
+                  </h2>
+                  <button
+                    type="button"
+                    onClick={handleStartEditNickname}
+                    className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1"
+                    title="Змінити нікнейм"
+                  >
+                    <Edit2 className="w-4 h-4" />
+                  </button>
+                </div>
+              )}
+            </div>
+
+            <div className="flex flex-wrap items-center justify-center sm:justify-start gap-4 text-sm text-slate-600 dark:text-slate-400 pt-1">
+              <div className="flex items-center gap-1.5">
+                <Mail className="w-4 h-4 text-emerald-500" />
+                <span>{user.email}</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <Calendar className="w-4 h-4 text-emerald-500" />
+                <span>Зареєстровано: {registrationDate}</span>
+              </div>
+            </div>
+            <p className="text-xs text-slate-400 dark:text-slate-500">
+              Аватарка прив'язана до вашої поштової скриньки через сервіс Gravatar.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* 2. Блок Статусу PRO або Допомоги проекту */}
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 rounded-2xl shadow-sm">
+        {isPro ? (
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 rounded-xl bg-gradient-to-r from-amber-500/10 via-emerald-500/10 to-transparent border border-amber-500/30">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-amber-500 text-slate-950">
+                  <Crown className="w-3.5 h-3.5" /> PRO Статус
+                </span>
+                <span className="text-xs text-emerald-600 dark:text-emerald-400 font-medium">
+                  Активний
+                </span>
+              </div>
+              <p className="text-sm font-semibold text-slate-800 dark:text-slate-200 pt-1">
+                {proExpirationDate
+                  ? `Доступ діє до: ${proExpirationDate}`
+                  : 'Безстроковий преміум доступ'}
+              </p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                Дякуємо вам за відчутну підтримку розвитку комплексу MeteoUAV!
+              </p>
+            </div>
+          </div>
+        ) : (
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 rounded-xl bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-500/30">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+                  Базовий статус
+                </span>
+              </div>
+              <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                Допоможіть підтримати проект
+              </h3>
+              <p className="text-xs text-slate-600 dark:text-slate-400 max-w-md">
+                Ваші донати допомагають оплачувати погодні сервери та розвивати нові модулі для пілотів. Отримайте PRO статус для свого акаунту.
+              </p>
+            </div>
+            <Link
+              to="/donate"
+              className="inline-flex items-center gap-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold rounded-xl shadow transition-all shrink-0"
+            >
+              <Heart className="w-4 h-4 fill-white" />
+              <span>Підтримати проект</span>
+            </Link>
+          </div>
+        )}
+      </div>
+
+      {/* 3. Керування збереженими локаціями */}
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 rounded-2xl shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2 text-base font-bold text-slate-900 dark:text-white">
+            <MapPin className="w-5 h-5 text-emerald-500" />
+            <span>Керування збереженими локаціями</span>
+          </div>
+          <p className="text-xs text-slate-600 dark:text-slate-400 max-w-lg">
+            Налаштуйте список улюблених міст та оперативних секторів на сторінці налаштувань для швидкого вибору у погодній консолі.
+          </p>
+        </div>
+        <Link
+          to="/settings"
+          className="inline-flex items-center gap-2 px-4 py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 text-sm font-medium rounded-xl transition-colors shrink-0"
+        >
+          <span>Перейти до налаштувань</span>
+          <ChevronRight className="w-4 h-4" />
+        </Link>
+      </div>
+
+      {/* 4. Зміна пароля */}
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 rounded-2xl shadow-sm space-y-4">
+        <div className="flex items-center gap-2 pb-2 border-b border-slate-200 dark:border-slate-800">
+          <KeyRound className="w-5 h-5 text-emerald-500" />
+          <h2 className="text-lg font-bold text-slate-900 dark:text-white">Зміна пароля</h2>
+        </div>
+
+        {passwordStatus && (
+          <div
+            className={`p-3.5 rounded-xl flex items-start gap-2.5 text-sm ${
+              passwordStatus.type === 'success'
+                ? 'bg-emerald-500/10 border border-emerald-500/30 text-emerald-700 dark:text-emerald-400'
+                : 'bg-rose-500/10 border border-rose-500/30 text-rose-600 dark:text-rose-400'
+            }`}
+          >
+            {passwordStatus.type === 'success' ? (
+              <CheckCircle2 className="w-5 h-5 shrink-0 mt-0.5" />
+            ) : (
+              <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
+            )}
+            <span>{passwordStatus.text}</span>
+          </div>
+        )}
+
+        <form onSubmit={handlePasswordSubmit} className="space-y-4 max-w-md">
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">
+              Новий пароль
+            </label>
+            <input
+              type="password"
+              required
+              placeholder="Мінімум 6 символів"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              className="w-full px-3.5 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">
+              Повторіть новий пароль
+            </label>
+            <input
+              type="password"
+              required
+              placeholder="Підтвердження нового паролю"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              className="w-full px-3.5 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm"
+            />
+          </div>
+
+          <button
+            type="submit"
+            disabled={isChangingPassword}
+            className="py-2.5 px-4 bg-slate-800 hover:bg-slate-900 dark:bg-slate-700 dark:hover:bg-slate-600 text-white text-sm font-semibold rounded-xl shadow transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+          >
+            {isChangingPassword ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span>Оновлення...</span>
+              </>
+            ) : (
+              <span>Оновити пароль</span>
+            )}
+          </button>
+        </form>
+      </div>
+
+      {/* 5. Додаткова інформація про сесію */}
+      <div className="text-center text-xs text-slate-400 dark:text-slate-500 pb-4">
+        Тривалість поточної сесії авторизації: 31 день від моменту входу.
+      </div>
     </div>
-  </div>
-)
+  )
+}
