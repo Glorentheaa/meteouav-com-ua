@@ -2,7 +2,7 @@ import React, { useMemo } from 'react'
 import { CloudLightning, ArrowUp } from 'lucide-react'
 import { ForecastCard } from './ForecastCard'
 import type { HourlyForecastPoint } from '../../types/meteoData'
-import type { ForecastDepth, ForecastDetail, MeteoWarnings } from '../../types/meteo'
+import type { ForecastDepth, ForecastDetail, MeteoWarnings, FlightLevels } from '../../types/meteo'
 import {
   evaluateWind,
   evaluateGusts,
@@ -11,6 +11,7 @@ import {
   evaluateHumidity,
   evaluateFog,
   evaluateKpIndex,
+  evaluateCloudBase,
   getSeverityCellClass,
 } from '../../utils/warningEvaluator'
 
@@ -19,6 +20,7 @@ interface ShortTermCardProps {
   warnings: MeteoWarnings
   depth: ForecastDepth
   detail: ForecastDetail
+  levels?: FlightLevels
 }
 
 export const ShortTermCard: React.FC<ShortTermCardProps> = ({
@@ -26,9 +28,11 @@ export const ShortTermCard: React.FC<ShortTermCardProps> = ({
   warnings,
   depth,
   detail,
+  levels = '300',
 }) => {
   const depthHours = parseInt(depth, 10)
   const detailHours = parseInt(detail, 10)
+  const maxFlightLevelM = parseInt(levels, 10) || 300
 
   // Фільтрація точок за глибиною та деталізацією
   const filteredPoints = useMemo(() => {
@@ -71,6 +75,11 @@ export const ShortTermCard: React.FC<ShortTermCardProps> = ({
         const msg = `Вологість ${pt.humidity}% (ліміт ${warnings.humidity}%)`
         if (!criticalList.includes(msg)) criticalList.push(msg)
       }
+
+      if (evaluateCloudBase(pt.cloudBaseM, maxFlightLevelM) === 'danger') {
+        const msg = `Кромка хмар (${pt.cloudBaseM}м) нижче ешелону ${maxFlightLevelM}м`
+        if (!criticalList.includes(msg)) criticalList.push(msg)
+      }
     }
 
     if (criticalList.length > 0) {
@@ -80,7 +89,7 @@ export const ShortTermCard: React.FC<ShortTermCardProps> = ({
       return `Зверніть увагу: ${warningList.slice(0, 2).join(', ')}`
     }
     return null
-  }, [filteredPoints, warnings])
+  }, [filteredPoints, warnings, maxFlightLevelM])
 
   if (filteredPoints.length === 0) {
     return (
@@ -165,6 +174,7 @@ export const ShortTermCard: React.FC<ShortTermCardProps> = ({
                 const humSev = evaluateHumidity(pt.humidity, warnings.humidity)
                 const fogSev = evaluateFog(pt.fogRisk, pt.visibilityKm, warnings.fog, warnings.visibility)
                 const kpSev = evaluateKpIndex(pt.kpIndex)
+                const cloudSev = evaluateCloudBase(pt.cloudBaseM, maxFlightLevelM)
 
                 // Стан туману:
                 const fogText = pt.fogRisk === 'high' ? 'Густий' : pt.fogRisk === 'low' ? 'Слабк.' : '—'
@@ -198,7 +208,7 @@ export const ShortTermCard: React.FC<ShortTermCardProps> = ({
                     </td>
 
                     {/* Кромка хмар */}
-                    <td className="py-1.5 px-1 text-slate-600 dark:text-slate-400">
+                    <td className={`py-1.5 px-1 ${getSeverityCellClass(cloudSev)}`}>
                       {pt.cloudBaseM}
                     </td>
 

@@ -179,11 +179,11 @@ export function getSeverityBadgeClass(severity: WarningSeverity): string {
 export function getSeverityCellClass(severity: WarningSeverity): string {
   switch (severity) {
     case 'danger':
-      return 'bg-rose-50 dark:bg-rose-950/30 text-rose-700 dark:text-rose-400 font-bold border border-rose-200 dark:border-rose-900/50'
+      return 'bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-400 font-bold border border-rose-200 dark:border-rose-900/50'
     case 'warning':
-      return 'bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-400 font-semibold border border-amber-200 dark:border-amber-900/50'
+      return 'bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 font-semibold border border-amber-200 dark:border-amber-900/50'
     case 'safe':
     default:
-      return 'text-slate-700 dark:text-slate-300'
+      return 'bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400 font-medium border border-emerald-200 dark:border-emerald-900/40'
   }
 }

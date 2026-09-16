@@ -264,6 +264,7 @@ export const MeteoApp: React.FC = () => {
                   warnings={warnings}
                   depth={depth}
                   detail={detail}
+                  levels={levels}
                 />
               )}
               {blocks.wind && (

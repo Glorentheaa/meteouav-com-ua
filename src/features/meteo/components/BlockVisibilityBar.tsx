@@ -5,7 +5,7 @@ const BLOCK_DEFINITIONS: readonly BlockMeta[] = [
   { key: 'shortTerm', label: 'Найближчий час' },
   { key: 'wind', label: 'Вітер/Хмари' },
   { key: 'windows', label: 'Вікна польотів' },
-  { key: 'conclusion', label: 'Висновок' },
+  { key: 'conclusion', label: 'Висновки метеолога' },
   { key: 'weekly', label: 'Тижневий' },
   { key: 'sunMoon', label: 'Сонце/Місяць' },
 ]
