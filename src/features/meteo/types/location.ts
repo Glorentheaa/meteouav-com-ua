@@ -22,6 +22,7 @@ export interface SavedLocation {
   rawLat?: number
   rawLon?: number
   sectorId: string
+  mgrs?: string
   isPinned: boolean
   createdAt: string
   lastUsedAt?: string

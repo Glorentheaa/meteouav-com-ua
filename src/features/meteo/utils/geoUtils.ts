@@ -1,4 +1,5 @@
 import type { SavedLocation, SectorInfo } from '../types/location'
+import { formatMGRS } from './coordParser'
 
 export const LAT_STEP = 0.05 // ~5.56 км
 export const LON_STEP = 0.10 // ~7.3 км на 48-50° широти
@@ -15,6 +16,7 @@ export const DEFAULT_LOCATIONS: SavedLocation[] = [
     lat: 50.45,
     lon: 30.50,
     sectorId: '50.45_30.50',
+    mgrs: '36U UA 22520 91652',
     isPinned: true,
     createdAt: '2026-01-01T00:00:00.000Z',
   },
@@ -25,6 +27,7 @@ export const DEFAULT_LOCATIONS: SavedLocation[] = [
     lat: 47.85,
     lon: 35.10,
     sectorId: '47.85_35.10',
+    mgrs: '36T XU 57100 01763',
     isPinned: true,
     createdAt: '2026-01-01T00:00:00.000Z',
   },
@@ -35,6 +38,7 @@ export const DEFAULT_LOCATIONS: SavedLocation[] = [
     lat: 48.45,
     lon: 35.00,
     sectorId: '48.45_35.00',
+    mgrs: '36U XU 47885 68249',
     isPinned: false,
     createdAt: '2026-01-01T00:00:00.000Z',
   },
@@ -45,6 +49,7 @@ export const DEFAULT_LOCATIONS: SavedLocation[] = [
     lat: 46.50,
     lon: 30.70,
     sectorId: '46.50_30.70',
+    mgrs: '36T US 23519 52173',
     isPinned: false,
     createdAt: '2026-01-01T00:00:00.000Z',
   },
@@ -55,6 +60,7 @@ export const DEFAULT_LOCATIONS: SavedLocation[] = [
     lat: 50.00,
     lon: 36.20,
     sectorId: '50.00_36.20',
+    mgrs: '37U BR 99345 42387',
     isPinned: false,
     createdAt: '2026-01-01T00:00:00.000Z',
   },
@@ -65,6 +71,7 @@ export const DEFAULT_LOCATIONS: SavedLocation[] = [
     lat: 49.85,
     lon: 24.00,
     sectorId: '49.85_24.00',
+    mgrs: '35U KR 84347 26270',
     isPinned: false,
     createdAt: '2026-01-01T00:00:00.000Z',
   },
@@ -276,6 +283,7 @@ export function addOrUpdateLocation(
   const id = loc.id || `loc_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`
   const now = new Date().toISOString()
 
+  const mgrsVal = loc.mgrs || formatMGRS(loc.lat, loc.lon).formatted
   const existingIndex = list.findIndex((item) => item.id === id || item.sectorId === loc.sectorId)
 
   let savedItem: SavedLocation
@@ -284,6 +292,7 @@ export function addOrUpdateLocation(
     savedItem = {
       ...list[existingIndex],
       ...loc,
+      mgrs: mgrsVal,
       id: list[existingIndex].id,
       createdAt: list[existingIndex].createdAt || now,
       lastUsedAt: now,
@@ -292,6 +301,7 @@ export function addOrUpdateLocation(
   } else {
     savedItem = {
       ...loc,
+      mgrs: mgrsVal,
       id,
       createdAt: now,
       lastUsedAt: now,
