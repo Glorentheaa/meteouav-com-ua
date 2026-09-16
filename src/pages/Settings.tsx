@@ -25,6 +25,7 @@ import {
   fetchNearestSettlement,
   DEFAULT_LOCATIONS,
 } from '../features/meteo/utils/geoUtils'
+import { parseCoordinatePair } from '../features/meteo/utils/coordParser'
 
 export const Settings: React.FC = () => {
   const navigate = useNavigate()
@@ -67,17 +68,17 @@ export const Settings: React.FC = () => {
     setIsAdding(true)
 
     try {
-      // Перевірка, чи введено координати через кому/пробіл (наприклад: 47.85, 35.10)
-      const coordMatch = trimmed.match(/^(-?\d+(\.\d+)?)[,\s]+(-?\d+(\.\d+)?)$/)
+      // Перевірка введення координат у будь-якому форматі (DD, DMS, DDM, N/E, кирилиця)
+      const parsedCoord = parseCoordinatePair(trimmed)
 
       let lat = 49.0
       let lon = 31.0
       let name = trimmed
       let settlement = trimmed
 
-      if (coordMatch) {
-        lat = parseFloat(coordMatch[1])
-        lon = parseFloat(coordMatch[3])
+      if (parsedCoord) {
+        lat = parsedCoord.lat
+        lon = parsedCoord.lon
         const sector = snapToSector(lat, lon)
         settlement = await fetchNearestSettlement(sector.lat, sector.lon)
         name = settlement || `Сектор ${sector.sectorId}`
