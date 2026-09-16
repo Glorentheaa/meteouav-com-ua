@@ -174,7 +174,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     })
 
     if (error) {
-      return { error: new Error(error.message) }
+      const msg = error.message.toLowerCase()
+      const isAlreadyRegistered =
+        msg.includes('already registered') ||
+        msg.includes('already exists') ||
+        msg.includes('user_already_exists') ||
+        msg.includes('already in use')
+
+      return {
+        error: new Error(error.message),
+        userAlreadyExists: isAlreadyRegistered,
+      }
+    }
+
+    // Захист від розкриття користувачів у Supabase (Prevent user enumeration):
+    // Якщо користувач вже існує, але увімкнено захист або підтвердження пошти,
+    // Supabase повертає об'єкт користувача з порожнім масивом identities [].
+    if (data.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) {
+      return {
+        error: new Error('Користувач з такою поштою вже існує.'),
+        userAlreadyExists: true,
+      }
     }
 
     if (data.session && data.user) {
@@ -182,10 +202,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUser(data.user)
       setSession(data.session)
       await fetchProfile(data.user)
-      return { error: null, needsEmailConfirmation: false }
+      return { error: null, needsEmailConfirmation: false, userAlreadyExists: false }
     }
 
-    return { error: null, needsEmailConfirmation: true }
+    return { error: null, needsEmailConfirmation: true, userAlreadyExists: false }
   }
 
   const signOut = async () => {
@@ -195,6 +215,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setSession(null)
     setProfile(null)
     setAvatarUrl('')
+  }
+
+  const resetPassword = async (email: string) => {
+    const redirectTo = `${window.location.origin}/auth?mode=reset`
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo,
+    })
+    return { error: error ? new Error(error.message) : null }
   }
 
   const updatePassword = async (newPassword: string) => {
@@ -241,6 +269,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         signUp,
         signOut,
         updatePassword,
+        resetPassword,
         updateNickname,
         refreshProfile,
       }}

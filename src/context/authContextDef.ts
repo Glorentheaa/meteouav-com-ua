@@ -24,9 +24,14 @@ export interface AuthContextType {
     email: string,
     password: string,
     nickname: string
-  ) => Promise<{ error: Error | null; needsEmailConfirmation?: boolean }>
+  ) => Promise<{
+    error: Error | null
+    needsEmailConfirmation?: boolean
+    userAlreadyExists?: boolean
+  }>
   signOut: () => Promise<void>
   updatePassword: (newPassword: string) => Promise<{ error: Error | null }>
+  resetPassword: (email: string) => Promise<{ error: Error | null }>
   updateNickname: (newNickname: string) => Promise<{ error: Error | null }>
   refreshProfile: () => Promise<void>
 }
