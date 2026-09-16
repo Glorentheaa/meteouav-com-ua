@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react'
-import { Link } from 'react-router-dom'
+import React, { useState } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
 import {
   MapPin,
   Plus,
@@ -8,74 +8,159 @@ import {
   ArrowLeft,
   CheckCircle2,
   Globe,
+  Edit2,
+  Check,
+  X,
+  Map,
+  Loader2,
 } from 'lucide-react'
-
-const DEFAULT_PINNED = ['Київ', 'Запоріжжя']
-const DEFAULT_SAVED = ['Дніпро', 'Одеса', 'Харків', 'Львів']
-
-const PINNED_STORAGE_KEY = 'meteo_pinned_locations'
-const SAVED_STORAGE_KEY = 'meteo_saved_locations'
+import type { SavedLocation } from '../features/meteo/types/location'
+import {
+  getStoredLocations,
+  deleteStoredLocation,
+  togglePinStoredLocation,
+  updateStoredLocationName,
+  addOrUpdateLocation,
+  snapToSector,
+  fetchNearestSettlement,
+  DEFAULT_LOCATIONS,
+} from '../features/meteo/utils/geoUtils'
 
 export const Settings: React.FC = () => {
-  const [pinnedLocations, setPinnedLocations] = useState<string[]>(() => {
-    const saved = localStorage.getItem(PINNED_STORAGE_KEY)
-    return saved ? JSON.parse(saved) : DEFAULT_PINNED
-  })
-
-  const [savedLocations, setSavedLocations] = useState<string[]>(() => {
-    const saved = localStorage.getItem(SAVED_STORAGE_KEY)
-    return saved ? JSON.parse(saved) : DEFAULT_SAVED
-  })
-
+  const navigate = useNavigate()
+  const [locations, setLocations] = useState<SavedLocation[]>(() => getStoredLocations())
   const [newCity, setNewCity] = useState('')
+  const [isAdding, setIsAdding] = useState(false)
   const [notification, setNotification] = useState<string | null>(null)
 
-  useEffect(() => {
-    localStorage.setItem(PINNED_STORAGE_KEY, JSON.stringify(pinnedLocations))
-  }, [pinnedLocations])
-
-  useEffect(() => {
-    localStorage.setItem(SAVED_STORAGE_KEY, JSON.stringify(savedLocations))
-  }, [savedLocations])
+  // Стан інлайн-редагування назви
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editingName, setEditingName] = useState('')
 
   const showNotification = (msg: string) => {
     setNotification(msg)
-    setTimeout(() => setNotification(null), 2500)
+    setTimeout(() => setNotification(null), 3000)
   }
 
-  const handleAddLocation = (e: React.FormEvent) => {
+  const handleStartEdit = (loc: SavedLocation) => {
+    setEditingId(loc.id)
+    setEditingName(loc.name)
+  }
+
+  const handleSaveEdit = (id: string) => {
+    if (!editingName.trim()) return
+    const updated = updateStoredLocationName(id, editingName.trim())
+    setLocations(updated)
+    setEditingId(null)
+    showNotification('Назву локації успішно оновлено')
+  }
+
+  const handleCancelEdit = () => {
+    setEditingId(null)
+  }
+
+  const handleAddLocation = async (e: React.FormEvent) => {
     e.preventDefault()
     const trimmed = newCity.trim()
     if (!trimmed) return
 
-    if (pinnedLocations.includes(trimmed) || savedLocations.includes(trimmed)) {
-      showNotification('Ця локація вже є у вашому списку')
+    setIsAdding(true)
+
+    try {
+      // Перевірка, чи введено координати через кому/пробіл (наприклад: 47.85, 35.10)
+      const coordMatch = trimmed.match(/^(-?\d+(\.\d+)?)[,\s]+(-?\d+(\.\d+)?)$/)
+
+      let lat = 49.0
+      let lon = 31.0
+      let name = trimmed
+      let settlement = trimmed
+
+      if (coordMatch) {
+        lat = parseFloat(coordMatch[1])
+        lon = parseFloat(coordMatch[3])
+        const sector = snapToSector(lat, lon)
+        settlement = await fetchNearestSettlement(sector.lat, sector.lon)
+        name = settlement || `Сектор ${sector.sectorId}`
+      } else {
+        // Перевірка серед дефолтних міст
+        const defaultMatch = DEFAULT_LOCATIONS.find(
+          (d) => d.name.toLowerCase() === trimmed.toLowerCase()
+        )
+        if (defaultMatch) {
+          lat = defaultMatch.lat
+          lon = defaultMatch.lon
+          settlement = defaultMatch.settlement
+        } else {
+          // Якщо назва довільна — спробуємо знайти координати через OSM
+          try {
+            const res = await fetch(
+              `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
+                trimmed + ', Україна'
+              )}&limit=1&accept-language=uk`
+            )
+            const data = await res.json()
+            if (data && data.length > 0) {
+              lat = parseFloat(data[0].lat)
+              lon = parseFloat(data[0].lon)
+              settlement = data[0].name || trimmed
+            }
+          } catch (e) {
+            console.warn('Помилка геокодування при додаванні:', e)
+          }
+        }
+      }
+
+      const sector = snapToSector(lat, lon)
+
+      // Перевірка дублікатів за сектором
+      const exists = locations.some((l) => l.sectorId === sector.sectorId)
+      if (exists) {
+        showNotification(`Локація для сектора ${sector.sectorId} вже є у вашому списку`)
+        setIsAdding(false)
+        return
+      }
+
+      const newLoc = addOrUpdateLocation({
+        name,
+        settlement,
+        lat: sector.lat,
+        lon: sector.lon,
+        sectorId: sector.sectorId,
+        isPinned: false,
+      })
+
+      setLocations(getStoredLocations())
+      setNewCity('')
+      showNotification(`Локацію "${newLoc.name}" додано`)
+    } catch (e) {
+      console.error(e)
+      showNotification('Помилка при додаванні локації')
+    } finally {
+      setIsAdding(false)
+    }
+  }
+
+  const handleDeleteLocation = (id: string, name: string) => {
+    const updated = deleteStoredLocation(id)
+    setLocations(updated)
+    showNotification(`Локацію "${name}" видалено`)
+  }
+
+  const handleTogglePin = (id: string) => {
+    const loc = locations.find((l) => l.id === id)
+    if (!loc) return
+
+    if (loc.isPinned && locations.filter((l) => l.isPinned).length <= 1) {
+      showNotification('Має залишатися хоча б одна закріплена локація')
       return
     }
 
-    setSavedLocations((prev) => [...prev, trimmed])
-    setNewCity('')
-    showNotification(`Локацію "${trimmed}" додано`)
+    const updated = togglePinStoredLocation(id)
+    setLocations(updated)
   }
 
-  const handleDeleteLocation = (city: string) => {
-    setSavedLocations((prev) => prev.filter((item) => item !== city))
-    showNotification(`Локацію "${city}" видалено`)
-  }
-
-  const handleTogglePin = (city: string) => {
-    if (pinnedLocations.includes(city)) {
-      if (pinnedLocations.length <= 1) {
-        showNotification('Має залишатися хоча б одна закріплена локація')
-        return
-      }
-      setPinnedLocations((prev) => prev.filter((item) => item !== city))
-      setSavedLocations((prev) => [...prev, city])
-    } else {
-      setSavedLocations((prev) => prev.filter((item) => item !== city))
-      setPinnedLocations((prev) => [...prev, city])
-    }
-  }
+  const pinnedLocations = locations.filter((l) => l.isPinned)
+  const savedLocations = locations.filter((l) => !l.isPinned)
 
   return (
     <div className="w-full max-w-3xl mx-auto flex flex-col gap-6 py-4">
@@ -94,10 +179,19 @@ export const Settings: React.FC = () => {
               Керування збереженими локаціями
             </h1>
             <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
-              Налаштування оперативних пунктів для швидкого моніторингу погоди.
+              Налаштування оперативних пунктів, тактичних секторів та власних назв позицій.
             </p>
           </div>
         </div>
+
+        <button
+          type="button"
+          onClick={() => navigate('/map?returnTo=/settings')}
+          className="flex items-center gap-2 px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-xl shadow-sm transition-all"
+        >
+          <Map className="w-4 h-4" />
+          <span className="hidden sm:inline">Обрати на мапі</span>
+        </button>
       </header>
 
       {/* Спливаюче сповіщення */}
@@ -110,26 +204,35 @@ export const Settings: React.FC = () => {
 
       {/* Форма додавання нової локації */}
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 rounded-2xl shadow-sm">
-        <h2 className="text-base font-bold text-slate-900 dark:text-white mb-3 flex items-center gap-2">
+        <h2 className="text-base font-bold text-slate-900 dark:text-white mb-2 flex items-center gap-2">
           <Plus className="w-4 h-4 text-emerald-500" />
           Додати нову локацію
         </h2>
+        <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">
+          Введіть назву населеного пункту або координати (наприклад: 47.85, 35.10). Точка автоматично прив'яжеться до квадрата ~5х8 км.
+        </p>
         <form onSubmit={handleAddLocation} className="flex gap-2">
           <div className="relative flex-1">
             <MapPin className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
             <input
               type="text"
-              placeholder="Наприклад: Полтава, Вінниця, Бахмут..."
+              disabled={isAdding}
+              placeholder="Наприклад: Полтава, Вінниця, або 48.45, 35.00"
               value={newCity}
               onChange={(e) => setNewCity(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white placeholder-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              className="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white placeholder-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:opacity-50"
             />
           </div>
           <button
             type="submit"
-            className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-medium text-sm rounded-xl transition-all shadow shrink-0 flex items-center gap-1.5"
+            disabled={isAdding || !newCity.trim()}
+            className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-medium text-sm rounded-xl transition-all shadow shrink-0 flex items-center gap-1.5 disabled:opacity-50"
           >
-            <Plus className="w-4 h-4" />
+            {isAdding ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Plus className="w-4 h-4" />
+            )}
             <span>Додати</span>
           </button>
         </form>
@@ -144,29 +247,79 @@ export const Settings: React.FC = () => {
               Закріплені локації
             </h2>
           </div>
-          <span className="text-xs text-slate-500">Завжди на початку списку</span>
+          <span className="text-xs text-slate-500">Завжди у верхній частині списку</span>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-          {pinnedLocations.map((city) => (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {pinnedLocations.map((loc) => (
             <div
-              key={city}
-              className="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800"
+              key={loc.id}
+              className="flex items-center justify-between p-3.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 gap-2"
             >
-              <div className="flex items-center gap-2.5">
-                <MapPin className="w-4 h-4 text-emerald-500" />
-                <span className="text-sm font-medium text-slate-800 dark:text-slate-200">
-                  {city}
-                </span>
+              <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                <MapPin className="w-4 h-4 text-emerald-500 shrink-0" />
+                {editingId === loc.id ? (
+                  <div className="flex items-center gap-1.5 flex-1">
+                    <input
+                      type="text"
+                      value={editingName}
+                      onChange={(e) => setEditingName(e.target.value)}
+                      className="px-2 py-1 text-xs bg-white dark:bg-slate-900 border border-emerald-500 rounded-lg text-slate-900 dark:text-white w-full focus:outline-none"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => handleSaveEdit(loc.id)}
+                      className="p-1 text-emerald-600 hover:bg-emerald-50 rounded"
+                    >
+                      <Check className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleCancelEdit}
+                      className="p-1 text-slate-400 hover:bg-slate-200 rounded"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-bold text-slate-800 dark:text-slate-200 truncate">
+                        {loc.name}
+                      </span>
+                      <span className="text-[10px] font-mono text-slate-400 dark:text-slate-500 bg-slate-200 dark:bg-slate-800 px-1.5 py-0.5 rounded shrink-0">
+                        {loc.sectorId}
+                      </span>
+                    </div>
+                    {loc.settlement && loc.settlement !== loc.name && (
+                      <p className="text-[11px] text-slate-400 truncate">
+                        н.п. {loc.settlement}
+                      </p>
+                    )}
+                  </div>
+                )}
               </div>
-              <button
-                type="button"
-                onClick={() => handleTogglePin(city)}
-                className="text-xs text-slate-500 hover:text-emerald-600 dark:hover:text-emerald-400 px-2 py-1 rounded hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors"
-                title="Відкріпити"
-              >
-                Відкріпити
-              </button>
+
+              {editingId !== loc.id && (
+                <div className="flex items-center gap-1 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => handleStartEdit(loc)}
+                    className="p-1.5 text-slate-400 hover:text-emerald-600 rounded hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors"
+                    title="Змінити власну назву"
+                  >
+                    <Edit2 className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleTogglePin(loc.id)}
+                    className="p-1.5 text-emerald-600 hover:text-slate-500 rounded hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors"
+                    title="Відкріпити"
+                  >
+                    <Pin className="w-3.5 h-3.5 fill-emerald-600" />
+                  </button>
+                </div>
+              )}
             </div>
           ))}
         </div>
@@ -188,39 +341,87 @@ export const Settings: React.FC = () => {
 
         {savedLocations.length === 0 ? (
           <p className="text-sm text-slate-500 dark:text-slate-400 py-2">
-            Список порожній. Додайте нову локацію вище.
+            Список порожній. Додайте нову локацію вище або оберіть її на карті.
           </p>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            {savedLocations.map((city) => (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {savedLocations.map((loc) => (
               <div
-                key={city}
-                className="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800"
+                key={loc.id}
+                className="flex items-center justify-between p-3.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 gap-2"
               >
-                <div className="flex items-center gap-2.5">
-                  <MapPin className="w-4 h-4 text-slate-400" />
-                  <span className="text-sm font-medium text-slate-800 dark:text-slate-200">
-                    {city}
-                  </span>
+                <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                  <MapPin className="w-4 h-4 text-slate-400 shrink-0" />
+                  {editingId === loc.id ? (
+                    <div className="flex items-center gap-1.5 flex-1">
+                      <input
+                        type="text"
+                        value={editingName}
+                        onChange={(e) => setEditingName(e.target.value)}
+                        className="px-2 py-1 text-xs bg-white dark:bg-slate-900 border border-emerald-500 rounded-lg text-slate-900 dark:text-white w-full focus:outline-none"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => handleSaveEdit(loc.id)}
+                        className="p-1 text-emerald-600 hover:bg-emerald-50 rounded"
+                      >
+                        <Check className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleCancelEdit}
+                        className="p-1 text-slate-400 hover:bg-slate-200 rounded"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-semibold text-slate-800 dark:text-slate-200 truncate">
+                          {loc.name}
+                        </span>
+                        <span className="text-[10px] font-mono text-slate-400 dark:text-slate-500 bg-slate-200 dark:bg-slate-800 px-1.5 py-0.5 rounded shrink-0">
+                          {loc.sectorId}
+                        </span>
+                      </div>
+                      {loc.settlement && loc.settlement !== loc.name && (
+                        <p className="text-[11px] text-slate-400 truncate">
+                          н.п. {loc.settlement}
+                        </p>
+                      )}
+                    </div>
+                  )}
                 </div>
-                <div className="flex items-center gap-1">
-                  <button
-                    type="button"
-                    onClick={() => handleTogglePin(city)}
-                    className="p-1.5 text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 rounded hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors"
-                    title="Закріпити"
-                  >
-                    <Pin className="w-3.5 h-3.5" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleDeleteLocation(city)}
-                    className="p-1.5 text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 rounded hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors"
-                    title="Видалити"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
-                </div>
+
+                {editingId !== loc.id && (
+                  <div className="flex items-center gap-1 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => handleStartEdit(loc)}
+                      className="p-1.5 text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 rounded hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors"
+                      title="Змінити назву"
+                    >
+                      <Edit2 className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleTogglePin(loc.id)}
+                      className="p-1.5 text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 rounded hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors"
+                      title="Закріпити"
+                    >
+                      <Pin className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteLocation(loc.id, loc.name)}
+                      className="p-1.5 text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 rounded hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors"
+                      title="Видалити"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                )}
               </div>
             ))}
           </div>

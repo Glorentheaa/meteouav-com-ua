@@ -1,4 +1,14 @@
 @import "tailwindcss";
+@import "leaflet/dist/leaflet.css";
+
+/* Коригування z-index для мапи Leaflet, щоб вона не перекривала навігацію та модалки */
+.leaflet-pane {
+  z-index: 10 !important;
+}
+.leaflet-top,
+.leaflet-bottom {
+  z-index: 20 !important;
+}
 
 /* Вмикаємо ручне перемикання темної теми через клас .dark (додаватиметься на <html>) */
 @variant dark (&:where(.dark, .dark *));

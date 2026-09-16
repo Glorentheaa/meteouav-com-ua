@@ -16,9 +16,11 @@ import {
   Edit2,
   Check,
   X,
+  Map,
 } from 'lucide-react'
 import { useAuth } from '../context/useAuth'
 import { getInitials } from '../utils/gravatar'
+import { getStoredLocations } from '../features/meteo/utils/geoUtils'
 
 export const Account: React.FC = () => {
   const navigate = useNavigate()
@@ -318,23 +320,49 @@ export const Account: React.FC = () => {
       </div>
 
       {/* 3. Керування збереженими локаціями */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 rounded-2xl shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2 text-base font-bold text-slate-900 dark:text-white">
-            <MapPin className="w-5 h-5 text-emerald-500" />
-            <span>Керування збереженими локаціями</span>
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 rounded-2xl shadow-sm space-y-4">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2 text-base font-bold text-slate-900 dark:text-white">
+              <MapPin className="w-5 h-5 text-emerald-500" />
+              <span>Керування збереженими локаціями ({getStoredLocations().length})</span>
+            </div>
+            <p className="text-xs text-slate-600 dark:text-slate-400 max-w-lg">
+              Налаштуйте список улюблених позицій та тактичних секторів для швидкого вибору у погодній консолі.
+            </p>
           </div>
-          <p className="text-xs text-slate-600 dark:text-slate-400 max-w-lg">
-            Налаштуйте список улюблених міст та оперативних секторів на сторінці налаштувань для швидкого вибору у погодній консолі.
-          </p>
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <Link
+              to="/map?returnTo=/account"
+              className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 px-3.5 py-2 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 text-xs font-semibold rounded-xl border border-emerald-500/30 hover:bg-emerald-100 transition-colors"
+            >
+              <Map className="w-3.5 h-3.5" />
+              <span>Мапа</span>
+            </Link>
+            <Link
+              to="/settings"
+              className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 px-4 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 text-xs font-semibold rounded-xl transition-colors"
+            >
+              <span>Налаштування місць</span>
+              <ChevronRight className="w-3.5 h-3.5" />
+            </Link>
+          </div>
         </div>
-        <Link
-          to="/settings"
-          className="inline-flex items-center gap-2 px-4 py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 text-sm font-medium rounded-xl transition-colors shrink-0"
-        >
-          <span>Перейти до налаштувань</span>
-          <ChevronRight className="w-4 h-4" />
-        </Link>
+
+        {/* Список закріплених секторів для швидкого перегляду */}
+        <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex flex-wrap gap-2">
+          {getStoredLocations().map((loc) => (
+            <div
+              key={loc.id}
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-xs"
+            >
+              <span className="font-semibold text-slate-700 dark:text-slate-300">{loc.name}</span>
+              <span className="text-[10px] font-mono text-slate-400 dark:text-slate-500">
+                [{loc.sectorId}]
+              </span>
+            </div>
+          ))}
+        </div>
       </div>
 
       {/* 4. Зміна пароля */}

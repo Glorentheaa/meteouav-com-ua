@@ -9,13 +9,7 @@ import { Donate } from './pages/Donate'
 import { About } from './pages/About'
 import { Legal } from './pages/Legal'
 import { MeteoApp } from './pages/MeteoApp'
-
-// Заглушка для сторінки мапи
-const MapPlaceholder = () => (
-  <div className="flex items-center justify-center h-full min-h-[50vh] text-slate-500 dark:text-slate-400">
-    Мапа в розробці... (тут буде інтерактивна карта)
-  </div>
-)
+import { MapPage } from './pages/MapPage'
 
 export function App() {
   return (
@@ -26,7 +20,7 @@ export function App() {
           <Route element={<MainLayout />}>
             <Route path="/" element={<Home />} />
             <Route path="/app" element={<MeteoApp />} />
-            <Route path="/map" element={<MapPlaceholder />} />
+            <Route path="/map" element={<MapPage />} />
             <Route path="/settings" element={<Settings />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/account" element={<Account />} />

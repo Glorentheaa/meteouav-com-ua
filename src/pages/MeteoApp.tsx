@@ -1,10 +1,14 @@
 import React, { useState } from 'react'
-import { RefreshCw } from 'lucide-react'
+import { RefreshCw, Loader2, CheckCircle2, AlertCircle } from 'lucide-react'
 
 // Hooks & utils
+import { useAuth } from '../context/useAuth'
 import { useMeteoSettings } from '../features/meteo/hooks/useMeteoSettings'
 import { useMeteoBlocks } from '../features/meteo/hooks/useMeteoBlocks'
 import { getUaTime, getForecastDatesText } from '../utils/dateUtils'
+import { getActiveLocation, setActiveLocation } from '../features/meteo/utils/geoUtils'
+import type { SavedLocation } from '../features/meteo/types/location'
+import { buildMeteoPayload, sendMeteoRequest } from '../services/meteoService'
 
 // Components
 import { LocationSelector } from '../features/meteo/components/LocationSelector'
@@ -21,6 +25,8 @@ import { WeeklyForecastCard } from '../features/meteo/components/cards/WeeklyFor
 import { SunMoonCard } from '../features/meteo/components/cards/SunMoonCard'
 
 export const MeteoApp: React.FC = () => {
+  const { user, isPro } = useAuth()
+
   const {
     depth,
     setDepth,
@@ -50,13 +56,57 @@ export const MeteoApp: React.FC = () => {
     hasGrid2Cards,
   } = useMeteoBlocks()
 
+  const [currentLocation, setCurrentLocation] = useState<SavedLocation>(() => getActiveLocation())
+  const [isRefreshing, setIsRefreshing] = useState(false)
+  const [statusFeedback, setStatusFeedback] = useState<{
+    type: 'success' | 'error'
+    message: string
+  } | null>(null)
+
   const [lastUpdated, setLastUpdated] = useState(getUaTime)
   const [autoUpdated] = useState(getUaTime)
   const [forecastDates, setForecastDates] = useState(getForecastDatesText)
 
-  const handleRefresh = () => {
-    setLastUpdated(getUaTime())
-    setForecastDates(getForecastDatesText())
+  const handleRefresh = async () => {
+    setIsRefreshing(true)
+    setStatusFeedback(null)
+
+    // Формуємо повне корисне навантаження для n8n
+    const payload = buildMeteoPayload({
+      location: currentLocation,
+      depth,
+      detail,
+      levels,
+      warnings,
+      user: user
+        ? {
+            id: user.id,
+            email: user.email ?? null,
+            isPro,
+          }
+        : undefined,
+    })
+
+    try {
+      const res = await sendMeteoRequest(payload)
+      setLastUpdated(getUaTime())
+      setForecastDates(getForecastDatesText())
+      setStatusFeedback({
+        type: res.success ? 'success' : 'error',
+        message: res.message,
+      })
+    } catch (e) {
+      console.error('Помилка оновлення прогнозу:', e)
+      setStatusFeedback({
+        type: 'error',
+        message: 'Помилка надсилання запиту до погодного сервісу',
+      })
+    } finally {
+      setIsRefreshing(false)
+      setTimeout(() => {
+        setStatusFeedback(null)
+      }, 5000)
+    }
   }
 
   return (
@@ -72,12 +122,36 @@ export const MeteoApp: React.FC = () => {
           </p>
         </div>
 
+        {/* Сповіщення про статус відправки запиту */}
+        {statusFeedback && (
+          <div
+            className={`p-3 rounded-xl border text-xs flex items-center gap-2 animate-in fade-in duration-200 ${
+              statusFeedback.type === 'success'
+                ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-700 dark:text-emerald-400'
+                : 'bg-rose-500/10 border-rose-500/30 text-rose-600 dark:text-rose-400'
+            }`}
+          >
+            {statusFeedback.type === 'success' ? (
+              <CheckCircle2 className="w-4 h-4 shrink-0" />
+            ) : (
+              <AlertCircle className="w-4 h-4 shrink-0" />
+            )}
+            <span>{statusFeedback.message}</span>
+          </div>
+        )}
+
         {/* Основна панель керування */}
         <div className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl shadow-sm mt-2 flex flex-col transition-all duration-300">
           {/* Верхній блок (Локація + Інфо + Оновлення) */}
           <div className="p-4 sm:p-5 grid grid-cols-1 lg:grid-cols-3 gap-5 items-end">
             {/* Локація */}
-            <LocationSelector />
+            <LocationSelector
+              currentLocation={currentLocation}
+              onSelectLocation={(loc) => {
+                setCurrentLocation(loc)
+                setActiveLocation(loc)
+              }}
+            />
 
             {/* Інфо-текст (Середина) */}
             <div className="w-full h-full flex items-center lg:px-2">
@@ -121,10 +195,20 @@ export const MeteoApp: React.FC = () => {
                 <button
                   type="button"
                   onClick={handleRefresh}
-                  className="px-6 py-2.5 text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg transition-colors shadow-sm flex items-center justify-center gap-2 w-full h-[42px]"
+                  disabled={isRefreshing}
+                  className="px-6 py-2.5 text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg transition-colors shadow-sm flex items-center justify-center gap-2 w-full h-[42px] disabled:opacity-75 disabled:cursor-not-allowed"
                 >
-                  <RefreshCw className="w-4 h-4" />
-                  Оновити прогноз
+                  {isRefreshing ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>Формування...</span>
+                    </>
+                  ) : (
+                    <>
+                      <RefreshCw className="w-4 h-4" />
+                      <span>Оновити прогноз</span>
+                    </>
+                  )}
                 </button>
               </div>
             </div>
@@ -156,7 +240,7 @@ export const MeteoApp: React.FC = () => {
           <SectionDivider
             isOpen={showGrid1}
             onToggle={() => setShowGrid1(!showGrid1)}
-            label={`Деталізований прогноз погоди на ${forecastDates}. Останнє оновлення ${lastUpdated}`}
+            label={`Деталізований прогноз погоди для сектора ${currentLocation.sectorId} (${currentLocation.name}) на ${forecastDates}. Останнє оновлення ${lastUpdated}`}
           />
 
           {showGrid1 && (
