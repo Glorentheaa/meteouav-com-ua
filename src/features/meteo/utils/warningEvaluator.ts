@@ -71,11 +71,10 @@ export function evaluateHumidity(humidity: number, limit: number): WarningSeveri
 
 /**
  * Оцінка геомагнітної активності (КР-індекс 0..9)
- * КР >= 5 - геомагнітна буря (високий ризик втрати або дрейфу супутників GPS/ГЛОНАСС)
- * КР 4 - помірні збурення
+ * Згідно з правилами MeteoUAV: КР-індекс є виключенням з правил і підсвічується ТІЛЬКИ жовтим,
+ * ніколи не блокує в червоний (danger), оскільки не є в найвищому пріоритеті.
  */
 export function evaluateKpIndex(kp: number): WarningSeverity {
-  if (kp >= 5) return 'danger'
   if (kp >= 4) return 'warning'
   return 'safe'
 }

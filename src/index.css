@@ -29,4 +29,40 @@
     /* Темна тема */
     @apply bg-slate-950 text-slate-100;
   }
+
+  /* Стилізація скролбарів під тему сайту */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(148, 163, 184, 0.4) transparent;
+  }
+
+  .dark * {
+    scrollbar-color: rgba(100, 116, 139, 0.4) transparent;
+  }
+
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: rgba(148, 163, 184, 0.4);
+    border-radius: 9999px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(16, 185, 129, 0.6);
+  }
+
+  .dark ::-webkit-scrollbar-thumb {
+    background: rgba(100, 116, 139, 0.4);
+  }
+
+  .dark ::-webkit-scrollbar-thumb:hover {
+    background: rgba(16, 185, 129, 0.6);
+  }
 }

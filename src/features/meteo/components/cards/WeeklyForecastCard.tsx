@@ -19,7 +19,7 @@ export const WeeklyForecastCard: React.FC<WeeklyForecastCardProps> = ({
   return (
     <>
       <ForecastCard
-        title="Тижневий прогноз (метеограма)"
+        title="Тижневий прогноз"
         icon={CalendarDays}
         className={isSunMoonVisible ? 'lg:col-span-2' : 'lg:col-span-3'}
       >
