@@ -1,13 +1,13 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
-import { MainLayout } from './MainLayout'
-import { Home } from './Home'
-import { Settings } from './Settings'
-import { Auth } from './Auth'
-import { Account } from './Account'
-import { Donate } from './Donate'
-import { About } from './About'
-import { Legal } from './Legal'
-import { MeteoApp } from './MeteoApp'
+import { MainLayout } from './components/layout/MainLayout'
+import { Home } from './pages/Home'
+import { Settings } from './pages/Settings'
+import { Auth } from './pages/Auth'
+import { Account } from './pages/Account'
+import { Donate } from './pages/Donate'
+import { About } from './pages/About'
+import { Legal } from './pages/Legal'
+import { MeteoApp } from './pages/MeteoApp'
 
 // Заглушка для сторінки мапи
 const MapPlaceholder = () => (
@@ -32,7 +32,7 @@ export function App() {
           <Route path="/about" element={<About />} />
           <Route path="/legal" element={<Legal />} />
         </Route>
-        
+
         {/* Редирект для невідомих адрес */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

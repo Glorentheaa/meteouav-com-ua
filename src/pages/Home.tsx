@@ -9,7 +9,7 @@ export const Home: React.FC = () => {
         Сервіс у стадії розробки
       </h1>
       <p className="max-w-xl text-slate-600 dark:text-slate-400 text-base leading-relaxed mb-8">
-        MeteoUAV знаходиться на етапі закритого калібрування та створення архітектури. 
+        MeteoUAV знаходиться на етапі закритого калібрування та створення архітектури.
       </p>
     </div>
   )

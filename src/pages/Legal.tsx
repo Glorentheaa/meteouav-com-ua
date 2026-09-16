@@ -4,7 +4,9 @@ export const Legal: React.FC = () => (
   <div className="w-full flex flex-col gap-6">
     <header className="border-b border-slate-300 dark:border-slate-800 pb-4">
       <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Правова інформація</h1>
-      <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">Умови використання та політика конфіденційності.</p>
+      <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+        Умови використання та політика конфіденційності.
+      </p>
     </header>
     <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 rounded-xl shadow-sm dark:shadow-none">
       <div className="flex flex-col space-y-8">
@@ -28,7 +30,7 @@ export const Legal: React.FC = () => (
           </p>
         </div>
 
-        {/* Блок 3: Конфіденційність */}
+        {/* Блок 2: Конфіденційність */}
         <div className="space-y-2">
           <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-200">
             Конфіденційність та обробка координат
@@ -38,7 +40,7 @@ export const Legal: React.FC = () => (
           </p>
         </div>
 
-        {/* Блок 5: Закриті алгоритми */}
+        {/* Блок 3: Закриті алгоритми */}
         <div className="space-y-2">
           <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-200">
             Внутрішня архітектура
@@ -48,7 +50,7 @@ export const Legal: React.FC = () => (
           </p>
         </div>
 
-        {/* Блок 2 та 4: Обмеження доступу */}
+        {/* Блок 4: Обмеження доступу */}
         <div className="space-y-2">
           <h3 className="text-lg font-semibold text-rose-700 dark:text-rose-500">
             Доступ та територіальні обмеження
