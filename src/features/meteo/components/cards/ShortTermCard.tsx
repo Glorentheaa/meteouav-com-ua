@@ -168,7 +168,9 @@ const ForecastGrid: React.FC<ForecastGridProps> = ({
         onClick={() => handleScroll('left')}
         disabled={!canScrollLeft}
         aria-label="Прокрутити вліво"
-        className={`absolute left-[118px] sm:left-[142px] top-1/2 -translate-y-1/2 z-30 p-1 rounded-full bg-white/95 dark:bg-slate-800/90 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-600/70 shadow-md hover:bg-slate-100 dark:hover:bg-slate-700 transition-all ${
+        className={`absolute ${
+          isExpanded ? 'left-[206px] sm:left-[226px]' : 'left-[168px] sm:left-[184px]'
+        } top-1/2 -translate-y-1/2 z-30 p-1 rounded-full bg-white/95 dark:bg-slate-800/90 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-600/70 shadow-md hover:bg-slate-100 dark:hover:bg-slate-700 transition-all ${
           canScrollLeft ? 'opacity-90 hover:scale-110 cursor-pointer' : 'opacity-0 pointer-events-none'
         }`}
       >
@@ -196,87 +198,134 @@ const ForecastGrid: React.FC<ForecastGridProps> = ({
         {/* ================= ЛІВА ФІКСОВАНА КОЛОНКА ПАРАМЕТРІВ ================= */}
         <div
           className={`sticky left-0 z-20 shrink-0 bg-white dark:bg-slate-900/95 backdrop-blur-md border-r border-slate-200 dark:border-slate-700/80 shadow-sm ${
-            isExpanded ? 'w-[148px]' : 'w-[124px] sm:w-[138px]'
+            isExpanded ? 'w-[210px] sm:w-[230px]' : 'w-[172px] sm:w-[188px]'
           }`}
         >
           {/* Рядок 1: Година */}
           <div
-            className={`flex items-center gap-1.5 px-2.5 font-bold text-slate-800 dark:text-slate-200 border-b border-slate-200 dark:border-slate-700/60 bg-slate-100 dark:bg-slate-800/80 ${
+            className={`flex items-center justify-between px-2.5 font-bold border-b border-slate-200 dark:border-slate-700/60 bg-slate-100 dark:bg-slate-800/80 ${
               isExpanded ? 'h-14 text-xs sm:text-sm' : 'h-11 text-[11px]'
             }`}
           >
-            <Clock className="w-3.5 h-3.5 text-sky-500 dark:text-sky-400 shrink-0" />
-            <span className="truncate">Година</span>
+            <div className="flex items-center gap-2 min-w-0">
+              <Clock className="w-3.5 h-3.5 text-sky-500 dark:text-sky-400 shrink-0" />
+              <span className="text-slate-800 dark:text-slate-200 whitespace-nowrap">Година</span>
+            </div>
           </div>
 
           {/* Рядок 2: Температура, °C */}
           <div
-            className={`flex items-center gap-1.5 px-2.5 font-semibold text-slate-700 dark:text-slate-300 border-b border-slate-200 dark:border-slate-700/60 bg-white dark:bg-transparent ${
-              isExpanded ? 'h-[46px] text-xs' : 'h-[38px] text-[10px] sm:text-[11px]'
+            className={`flex items-center justify-between px-2.5 border-b border-slate-200 dark:border-slate-700/60 bg-white dark:bg-transparent ${
+              isExpanded ? 'h-[46px] text-xs' : 'h-[38px] text-[10.5px] sm:text-[11px]'
             }`}
           >
-            <Thermometer className="w-3.5 h-3.5 text-rose-500 dark:text-rose-400 shrink-0" />
-            <span className="truncate">Температура, °C</span>
+            <div className="flex items-center gap-2 min-w-0">
+              <Thermometer className="w-3.5 h-3.5 text-rose-500 dark:text-rose-400 shrink-0" />
+              <span className="font-semibold text-slate-700 dark:text-slate-300 whitespace-nowrap">Температура</span>
+            </div>
+            <span className="font-semibold text-slate-400 dark:text-slate-400 shrink-0 text-right pl-1 text-[10px] sm:text-[11px]">°C</span>
           </div>
 
           {/* Рядок 3: Вітер / Пориви, м/с */}
           <div
-            className={`flex items-center gap-1.5 px-2.5 font-semibold text-slate-700 dark:text-slate-300 border-b border-slate-200 dark:border-slate-700/60 bg-slate-50/50 dark:bg-transparent ${
-              isExpanded ? 'h-12 text-xs' : 'h-10 text-[10px] sm:text-[11px]'
+            className={`flex items-center justify-between px-2.5 border-b border-slate-200 dark:border-slate-700/60 bg-slate-50/50 dark:bg-transparent ${
+              isExpanded ? 'h-12 text-xs' : 'h-10 text-[10px] sm:text-[10.5px]'
             }`}
           >
-            <Wind className="w-3.5 h-3.5 text-cyan-600 dark:text-cyan-400 shrink-0" />
-            <span className="truncate">Вітер / Пор., м/с</span>
+            <div className="flex items-center gap-2 min-w-0">
+              <Wind className="w-3.5 h-3.5 text-cyan-600 dark:text-cyan-400 shrink-0" />
+              <div className="flex flex-col justify-center leading-tight">
+                <span className="font-semibold text-slate-700 dark:text-slate-300 whitespace-nowrap">Вітер</span>
+                <span className="font-semibold text-slate-700 dark:text-slate-300 whitespace-nowrap">Пориви</span>
+              </div>
+            </div>
+            <div className="flex flex-col justify-center text-right shrink-0 leading-tight pl-1 text-[9.5px] sm:text-[10px] font-medium text-slate-400 dark:text-slate-400">
+              <span>м/с</span>
+              <span>м/с</span>
+            </div>
           </div>
 
           {/* Рядок 4: Напрям вітру, ° */}
           <div
-            className={`flex items-center gap-1.5 px-2.5 font-semibold text-slate-700 dark:text-slate-300 border-b border-slate-200 dark:border-slate-700/60 bg-white dark:bg-transparent ${
-              isExpanded ? 'h-11 text-xs' : 'h-9 text-[10px] sm:text-[11px]'
+            className={`flex items-center justify-between px-2.5 border-b border-slate-200 dark:border-slate-700/60 bg-white dark:bg-transparent ${
+              isExpanded ? 'h-11 text-xs' : 'h-9 text-[10.5px] sm:text-[11px]'
             }`}
           >
-            <Navigation className="w-3.5 h-3.5 text-indigo-500 dark:text-indigo-400 shrink-0" />
-            <span className="truncate">Напрям вітру, °</span>
+            <div className="flex items-center gap-2 min-w-0">
+              <Navigation className="w-3.5 h-3.5 text-indigo-500 dark:text-indigo-400 shrink-0" />
+              <span className="font-semibold text-slate-700 dark:text-slate-300 whitespace-nowrap">Напрям вітру</span>
+            </div>
+            <span className="font-semibold text-slate-400 dark:text-slate-400 shrink-0 text-right pl-1 text-[11px]">°</span>
           </div>
 
-          {/* Рядок 5: Кромка, м / Хмарн., % */}
+          {/* Рядок 5: Кромка хмар / Хмарність (м / %) */}
           <div
-            className={`flex items-center gap-1.5 px-2.5 font-semibold text-slate-700 dark:text-slate-300 border-b border-slate-200 dark:border-slate-700/60 bg-slate-50/50 dark:bg-transparent ${
-              isExpanded ? 'h-12 text-xs' : 'h-10 text-[10px] sm:text-[11px]'
+            className={`flex items-center justify-between px-2.5 border-b border-slate-200 dark:border-slate-700/60 bg-slate-50/50 dark:bg-transparent ${
+              isExpanded ? 'h-12 text-xs' : 'h-10 text-[10px] sm:text-[10.5px]'
             }`}
           >
-            <Cloud className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400 shrink-0" />
-            <span className="truncate">Кромка, м / Хм., %</span>
+            <div className="flex items-center gap-2 min-w-0">
+              <Cloud className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400 shrink-0" />
+              <div className="flex flex-col justify-center leading-tight">
+                <span className="font-semibold text-slate-700 dark:text-slate-300 whitespace-nowrap">Кромка хмар</span>
+                <span className="font-semibold text-slate-700 dark:text-slate-300 whitespace-nowrap">Хмарність</span>
+              </div>
+            </div>
+            <div className="flex flex-col justify-center text-right shrink-0 leading-tight pl-1 text-[9.5px] sm:text-[10px] font-medium text-slate-400 dark:text-slate-400">
+              <span>м</span>
+              <span>%</span>
+            </div>
           </div>
 
-          {/* Рядок 6: Опади, мм / Волог., % */}
+          {/* Рядок 6: Опади / Вологість (мм / %) */}
           <div
-            className={`flex items-center gap-1.5 px-2.5 font-semibold text-slate-700 dark:text-slate-300 border-b border-slate-200 dark:border-slate-700/60 bg-white dark:bg-transparent ${
-              isExpanded ? 'h-12 text-xs' : 'h-10 text-[10px] sm:text-[11px]'
+            className={`flex items-center justify-between px-2.5 border-b border-slate-200 dark:border-slate-700/60 bg-white dark:bg-transparent ${
+              isExpanded ? 'h-12 text-xs' : 'h-10 text-[10px] sm:text-[10.5px]'
             }`}
           >
-            <Droplets className="w-3.5 h-3.5 text-blue-500 dark:text-blue-400 shrink-0" />
-            <span className="truncate">Опади, мм / Вол., %</span>
+            <div className="flex items-center gap-2 min-w-0">
+              <Droplets className="w-3.5 h-3.5 text-blue-500 dark:text-blue-400 shrink-0" />
+              <div className="flex flex-col justify-center leading-tight">
+                <span className="font-semibold text-slate-700 dark:text-slate-300 whitespace-nowrap">Опади</span>
+                <span className="font-semibold text-slate-700 dark:text-slate-300 whitespace-nowrap">Вологість</span>
+              </div>
+            </div>
+            <div className="flex flex-col justify-center text-right shrink-0 leading-tight pl-1 text-[9.5px] sm:text-[10px] font-medium text-slate-400 dark:text-slate-400">
+              <span>мм</span>
+              <span>%</span>
+            </div>
           </div>
 
-          {/* Рядок 7: Видимість, км / Туман */}
+          {/* Рядок 7: Видимість / Туман (км / стан) */}
           <div
-            className={`flex items-center gap-1.5 px-2.5 font-semibold text-slate-700 dark:text-slate-300 border-b border-slate-200 dark:border-slate-700/60 bg-slate-50/50 dark:bg-transparent ${
-              isExpanded ? 'h-12 text-xs' : 'h-10 text-[10px] sm:text-[11px]'
+            className={`flex items-center justify-between px-2.5 border-b border-slate-200 dark:border-slate-700/60 bg-slate-50/50 dark:bg-transparent ${
+              isExpanded ? 'h-12 text-xs' : 'h-10 text-[10px] sm:text-[10.5px]'
             }`}
           >
-            <Eye className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400 shrink-0" />
-            <span className="truncate">Видим., км / Туман</span>
+            <div className="flex items-center gap-2 min-w-0">
+              <Eye className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400 shrink-0" />
+              <div className="flex flex-col justify-center leading-tight">
+                <span className="font-semibold text-slate-700 dark:text-slate-300 whitespace-nowrap">Видимість</span>
+                <span className="font-semibold text-slate-700 dark:text-slate-300 whitespace-nowrap">Туман</span>
+              </div>
+            </div>
+            <div className="flex flex-col justify-center text-right shrink-0 leading-tight pl-1 text-[9.5px] sm:text-[10px] font-medium text-slate-400 dark:text-slate-400">
+              <span>км</span>
+              <span>ризик</span>
+            </div>
           </div>
 
           {/* Рядок 8: КР-індекс */}
           <div
-            className={`flex items-center gap-1.5 px-2.5 font-semibold text-slate-700 dark:text-slate-300 bg-white dark:bg-transparent ${
-              isExpanded ? 'h-10 text-xs' : 'h-8 text-[10px] sm:text-[11px]'
+            className={`flex items-center justify-between px-2.5 bg-white dark:bg-transparent ${
+              isExpanded ? 'h-10 text-xs' : 'h-8 text-[10.5px] sm:text-[11px]'
             }`}
           >
-            <Magnet className="w-3.5 h-3.5 text-amber-500 dark:text-amber-400 shrink-0" />
-            <span className="truncate">КР-індекс</span>
+            <div className="flex items-center gap-2 min-w-0">
+              <Magnet className="w-3.5 h-3.5 text-amber-500 dark:text-amber-400 shrink-0" />
+              <span className="font-semibold text-slate-700 dark:text-slate-300 whitespace-nowrap">КР-індекс</span>
+            </div>
+            <span className="font-medium text-slate-400 dark:text-slate-400 shrink-0 text-right pl-1 text-[9.5px] sm:text-[10px]">0–9</span>
           </div>
         </div>
 
@@ -627,56 +676,6 @@ export const ShortTermCard: React.FC<ShortTermCardProps> = ({
     return sliced.filter((_, idx) => idx % detailHours === 0)
   }, [hourly, depthHours, detailHours])
 
-  // Розрахунок критичних попереджень
-  const criticalNotice = useMemo(() => {
-    if (filteredPoints.length === 0) return null
-    const criticalList: string[] = []
-    const warningList: string[] = []
-
-    for (const pt of filteredPoints) {
-      if (evaluateWind(pt.surfaceWind, warnings.wind) === 'danger') {
-        const msg = `Вітер до ${pt.surfaceWind.toFixed(1)} м/с (ліміт ${warnings.wind})`
-        if (!criticalList.includes(msg)) criticalList.push(msg)
-      } else if (evaluateWind(pt.surfaceWind, warnings.wind) === 'warning') {
-        const msg = `Вітер наближається до ліміту (${pt.surfaceWind.toFixed(1)} м/с)`
-        if (!warningList.includes(msg)) warningList.push(msg)
-      }
-
-      if (evaluateGusts(pt.surfaceGusts, warnings.gusts) === 'danger') {
-        const msg = `Пориви до ${pt.surfaceGusts.toFixed(1)} м/с (ліміт ${warnings.gusts})`
-        if (!criticalList.includes(msg)) criticalList.push(msg)
-      }
-
-      if (evaluateFog(pt.fogRisk, pt.visibilityKm, warnings.fog, warnings.visibility) === 'danger') {
-        const msg = pt.fogRisk === 'high' ? 'Високий ризик туману' : `Видимість менше ${warnings.visibility} км`
-        if (!criticalList.includes(msg)) criticalList.push(msg)
-      }
-
-      if (evaluatePrecip(pt.precipMm, warnings.precip) === 'danger') {
-        const msg = `Опади ${pt.precipMm.toFixed(1)} мм/год`
-        if (!criticalList.includes(msg)) criticalList.push(msg)
-      }
-
-      if (evaluateHumidity(pt.humidity, warnings.humidity) === 'danger') {
-        const msg = `Вологість ${pt.humidity}% (ліміт ${warnings.humidity}%)`
-        if (!criticalList.includes(msg)) criticalList.push(msg)
-      }
-
-      if (evaluateCloudBase(pt.cloudBaseM, maxFlightLevelM) === 'danger') {
-        const msg = `Кромка хмар (${pt.cloudBaseM}м) нижче ешелону ${maxFlightLevelM}м`
-        if (!criticalList.includes(msg)) criticalList.push(msg)
-      }
-    }
-
-    if (criticalList.length > 0) {
-      return `Критичні фактори: ${criticalList.slice(0, 3).join(', ')}`
-    }
-    if (warningList.length > 0) {
-      return `Зверніть увагу: ${warningList.slice(0, 2).join(', ')}`
-    }
-    return null
-  }, [filteredPoints, warnings, maxFlightLevelM])
-
   if (filteredPoints.length === 0) {
     return (
       <ForecastCard
@@ -691,27 +690,11 @@ export const ShortTermCard: React.FC<ShortTermCardProps> = ({
     )
   }
 
-  // Кнопка "Розгорнути" у правому кутку заголовка картки
-  const expandAction = (
-    <button
-      type="button"
-      onClick={() => setIsModalOpen(true)}
-      title="Розгорнути прогноз на весь екран"
-      aria-label="Розгорнути прогноз на весь екран"
-      className="flex items-center gap-1 px-2 py-1 rounded-md text-xs text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-700/60 transition-colors border border-transparent hover:border-slate-300 dark:hover:border-slate-600"
-    >
-      <Maximize2 className="w-3.5 h-3.5" />
-      <span className="hidden sm:inline text-[11px]">Розгорнути</span>
-    </button>
-  )
-
   return (
     <>
       <ForecastCard
         title="Прогноз на найближчий час"
         icon={CloudLightning}
-        criticalNotice={criticalNotice}
-        headerAction={expandAction}
         updatedText={null}
         className="self-start w-full"
       >
@@ -722,6 +705,20 @@ export const ShortTermCard: React.FC<ShortTermCardProps> = ({
             maxFlightLevelM={maxFlightLevelM}
             isExpanded={false}
           />
+        </div>
+
+        {/* Кнопка "Розгорнути" у правому нижньому кутку блоку */}
+        <div className="flex justify-end items-center mt-2.5 pt-1 shrink-0">
+          <button
+            type="button"
+            onClick={() => setIsModalOpen(true)}
+            title="Розгорнути прогноз на весь екран"
+            aria-label="Розгорнути прогноз на весь екран"
+            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-700/60 transition-colors border border-slate-200 dark:border-slate-700/80 shadow-xs"
+          >
+            <Maximize2 className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
+            <span className="text-[11px] sm:text-xs">Розгорнути</span>
+          </button>
         </div>
       </ForecastCard>
 
@@ -774,14 +771,6 @@ export const ShortTermCard: React.FC<ShortTermCardProps> = ({
                   isExpanded={true}
                 />
               </div>
-
-              {/* Критичні фактори в модальному вікні */}
-              {criticalNotice && (
-                <div className="mt-4 px-3 py-2 rounded-lg bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800/40 text-rose-800 dark:text-rose-300 text-xs flex items-center gap-2 shrink-0">
-                  <span className="text-base">⚠️</span>
-                  <span>{criticalNotice}</span>
-                </div>
-              )}
             </div>
           </div>
         </div>
