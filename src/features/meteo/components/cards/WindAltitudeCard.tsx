@@ -348,11 +348,16 @@ export const WindAltitudeCard: React.FC<WindAltitudeCardProps> = ({
           />
         </div>
 
-        {/* Нижній рядок: трек ліворуч, кнопка "Розгорнути" праворуч */}
+        {/* Нижній рядок: розшифровка та трек ліворуч, кнопка "Розгорнути" праворуч */}
         <div className="flex items-center justify-between mt-2.5 pt-1 shrink-0">
-          <span className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
-            Трек: крок {detailHours} год, глибина {depthHours} год, ешелони до {maxLevelM} м
-          </span>
+          <div className="flex flex-col">
+            <span className="text-[11px] text-slate-600 dark:text-slate-300 font-medium">
+              Напрям та азимут | Вітер/Пориви в м/с
+            </span>
+            <span className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
+              Трек: крок {detailHours} год, глибина {depthHours} год, ешелони до {maxLevelM} м
+            </span>
+          </div>
 
           <button
             type="button"
@@ -389,6 +394,9 @@ export const WindAltitudeCard: React.FC<WindAltitudeCardProps> = ({
                   <h3 className="text-base sm:text-lg font-bold text-slate-900 dark:text-slate-100">
                     Вітер по ешелонах (погодинно)
                   </h3>
+                  <p className="text-xs text-slate-600 dark:text-slate-300 font-medium">
+                    Напрям та азимут | Вітер/Пориви в м/с
+                  </p>
                   <p className="text-xs text-slate-500 dark:text-slate-400">
                     Трек: крок {detailHours} год, глибина {depthHours} год, ешелони до {maxLevelM} м
                   </p>

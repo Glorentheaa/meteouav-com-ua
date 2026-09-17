@@ -64,7 +64,7 @@ const WeeklyGrid: React.FC<WeeklyGridProps> = ({ days, isExpanded = false }) => 
   // Тільки колонка іконок лишається sticky ліворуч
   const iconColWidth = isExpanded ? 'w-[44px] sm:w-[48px]' : 'w-[36px] sm:w-[40px]'
   // Текстовий стовпчик параметрів (скролиться разом із даними)
-  const labelColWidth = isExpanded ? 150 : 130
+  const labelColWidth = isExpanded ? 150 : 104
   const dayColWidth = isExpanded ? 124 : 94
   const totalScrollWidth = labelColWidth + days.length * dayColWidth
 
@@ -82,6 +82,17 @@ const WeeklyGrid: React.FC<WeeklyGridProps> = ({ days, isExpanded = false }) => 
     setCanScrollLeft(scrollLeft > 4)
     setCanScrollRight(scrollLeft < scrollWidth - clientWidth - 4)
   }
+
+  // При відкритті у згорнутому стані назви параметрів приховані під скролом (видно лише іконки)
+  useEffect(() => {
+    if (!scrollRef.current) return
+    if (!isExpanded) {
+      scrollRef.current.scrollLeft = labelColWidth
+    } else {
+      scrollRef.current.scrollLeft = 0
+    }
+    checkScroll()
+  }, [days, isExpanded, labelColWidth])
 
   useEffect(() => {
     checkScroll()
@@ -163,7 +174,7 @@ const WeeklyGrid: React.FC<WeeklyGridProps> = ({ days, isExpanded = false }) => 
         aria-label="Прокрутити вліво"
         className={`absolute ${
           isExpanded ? 'left-[46px] sm:left-[52px]' : 'left-[38px] sm:left-[42px]'
-        } top-1/2 -translate-y-1/2 z-30 p-1 rounded-full bg-white/95 dark:bg-slate-800/90 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-600/70 shadow-md hover:bg-slate-100 dark:hover:bg-slate-700 transition-all ${
+        } top-1/2 -translate-y-1/2 z-40 p-1 rounded-full bg-white/95 dark:bg-slate-800/90 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-600/70 shadow-md hover:bg-slate-100 dark:hover:bg-slate-700 transition-all ${
           canScrollLeft ? 'opacity-90 hover:scale-110 cursor-pointer' : 'opacity-0 pointer-events-none'
         }`}
       >
@@ -175,7 +186,7 @@ const WeeklyGrid: React.FC<WeeklyGridProps> = ({ days, isExpanded = false }) => 
         onClick={() => handleScroll('right')}
         disabled={!canScrollRight}
         aria-label="Прокрутити вправо"
-        className={`absolute right-1.5 top-1/2 -translate-y-1/2 z-30 p-1 rounded-full bg-white/95 dark:bg-slate-800/90 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-600/70 shadow-md hover:bg-slate-100 dark:hover:bg-slate-700 transition-all ${
+        className={`absolute right-1.5 top-1/2 -translate-y-1/2 z-40 p-1 rounded-full bg-white/95 dark:bg-slate-800/90 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-600/70 shadow-md hover:bg-slate-100 dark:hover:bg-slate-700 transition-all ${
           canScrollRight ? 'opacity-90 hover:scale-110 cursor-pointer' : 'opacity-0 pointer-events-none'
         }`}
       >
@@ -190,7 +201,7 @@ const WeeklyGrid: React.FC<WeeklyGridProps> = ({ days, isExpanded = false }) => 
       >
         {/* ================= 1. ФІКСОВАНА ЛІВА КОЛОНКА (ЛИШЕ ІКОНКИ) ================= */}
         <div
-          className={`sticky left-0 z-20 shrink-0 bg-white dark:bg-slate-900/95 backdrop-blur-md border-r border-slate-200 dark:border-slate-700/80 shadow-xs flex flex-col items-center ${iconColWidth}`}
+          className={`sticky left-0 z-30 shrink-0 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-700/80 shadow-xs flex flex-col items-center ${iconColWidth}`}
         >
           {/* Шапка: іконка календаря */}
           <div
@@ -256,7 +267,7 @@ const WeeklyGrid: React.FC<WeeklyGridProps> = ({ days, isExpanded = false }) => 
             {/* Текстова назва стовпчика (скролиться) */}
             <div
               style={{ width: `${labelColWidth}px` }}
-              className="flex items-center px-2.5 font-bold text-slate-800 dark:text-slate-200 border-r border-slate-200 dark:border-slate-700/60 shrink-0 text-xs sm:text-sm truncate"
+              className="flex items-center px-2 font-bold text-slate-800 dark:text-slate-200 border-r border-slate-200 dark:border-slate-700/60 shrink-0 text-xs sm:text-sm truncate"
             >
               Параметр / День
             </div>
@@ -326,10 +337,10 @@ const WeeklyGrid: React.FC<WeeklyGridProps> = ({ days, isExpanded = false }) => 
               )}
             </svg>
 
-            {/* Назва рядка */}
+            {/* Назва рядка: z-10 щоб бути під фіксованою колонкою z-30 */}
             <div
               style={{ width: `${labelColWidth}px` }}
-              className="relative flex items-center px-2.5 font-semibold text-slate-700 dark:text-slate-300 border-r border-slate-200 dark:border-slate-700/60 bg-white dark:bg-slate-900/90 z-20 shrink-0 text-[11px] sm:text-xs truncate"
+              className="relative flex items-center px-2 font-semibold text-slate-700 dark:text-slate-300 border-r border-slate-200 dark:border-slate-700/60 bg-white dark:bg-slate-900 z-10 shrink-0 text-[10.5px] sm:text-xs truncate"
             >
               Температура, °C
             </div>
@@ -363,7 +374,7 @@ const WeeklyGrid: React.FC<WeeklyGridProps> = ({ days, isExpanded = false }) => 
           >
             <div
               style={{ width: `${labelColWidth}px` }}
-              className="flex items-center px-2.5 font-semibold text-slate-700 dark:text-slate-300 border-r border-slate-200 dark:border-slate-700/60 shrink-0 text-[11px] sm:text-xs truncate"
+              className="flex items-center px-2 font-semibold text-slate-700 dark:text-slate-300 border-r border-slate-200 dark:border-slate-700/60 shrink-0 text-[10.5px] sm:text-xs truncate"
             >
               Вітер, м/с
             </div>
@@ -396,7 +407,7 @@ const WeeklyGrid: React.FC<WeeklyGridProps> = ({ days, isExpanded = false }) => 
           >
             <div
               style={{ width: `${labelColWidth}px` }}
-              className="flex items-center px-2.5 font-semibold text-slate-700 dark:text-slate-300 border-r border-slate-200 dark:border-slate-700/60 shrink-0 text-[11px] sm:text-xs truncate"
+              className="flex items-center px-2 font-semibold text-slate-700 dark:text-slate-300 border-r border-slate-200 dark:border-slate-700/60 shrink-0 text-[10.5px] sm:text-xs truncate"
             >
               Напрям вітру, °
             </div>
@@ -454,10 +465,10 @@ const WeeklyGrid: React.FC<WeeklyGridProps> = ({ days, isExpanded = false }) => 
               )}
             </svg>
 
-            {/* Назва рядка */}
+            {/* Назва рядка: z-10 щоб проходити під фіксованою колонкою z-30 */}
             <div
               style={{ width: `${labelColWidth}px` }}
-              className="relative flex items-center px-2.5 font-semibold text-slate-700 dark:text-slate-300 border-r border-slate-200 dark:border-slate-700/60 bg-slate-50 dark:bg-slate-900/90 z-20 shrink-0 text-[11px] sm:text-xs truncate"
+              className="relative flex items-center px-2 font-semibold text-slate-700 dark:text-slate-300 border-r border-slate-200 dark:border-slate-700/60 bg-slate-50 dark:bg-slate-900 z-10 shrink-0 text-[10.5px] sm:text-xs truncate"
             >
               Опади, мм
             </div>
@@ -493,7 +504,7 @@ const WeeklyGrid: React.FC<WeeklyGridProps> = ({ days, isExpanded = false }) => 
           >
             <div
               style={{ width: `${labelColWidth}px` }}
-              className="flex items-center px-2.5 font-semibold text-slate-700 dark:text-slate-300 border-r border-slate-200 dark:border-slate-700/60 shrink-0 text-[11px] sm:text-xs truncate"
+              className="flex items-center px-2 font-semibold text-slate-700 dark:text-slate-300 border-r border-slate-200 dark:border-slate-700/60 shrink-0 text-[10.5px] sm:text-xs truncate"
             >
               Кромка хмар, м
             </div>
@@ -523,7 +534,7 @@ const WeeklyGrid: React.FC<WeeklyGridProps> = ({ days, isExpanded = false }) => 
           >
             <div
               style={{ width: `${labelColWidth}px` }}
-              className="flex items-center px-2.5 font-semibold text-slate-700 dark:text-slate-300 border-r border-slate-200 dark:border-slate-700/60 shrink-0 text-[11px] sm:text-xs truncate"
+              className="flex items-center px-2 font-semibold text-slate-700 dark:text-slate-300 border-r border-slate-200 dark:border-slate-700/60 shrink-0 text-[10.5px] sm:text-xs truncate"
             >
               КР-Індекс
             </div>
