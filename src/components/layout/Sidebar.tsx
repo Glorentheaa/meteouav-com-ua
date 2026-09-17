@@ -1,8 +1,9 @@
 import React from 'react'
 import { NavLink } from 'react-router-dom'
-import { X, CloudRain, LogIn, Heart, Info, Crown } from 'lucide-react'
+import { X, CloudRain, LogIn, Heart, Info, Crown, Smartphone, Download } from 'lucide-react'
 import { useAuth } from '../../context/useAuth'
 import { getInitials } from '../../utils/gravatar'
+import { usePwaInstall } from '../../hooks/usePwaInstall'
 
 interface SidebarProps {
   isOpen: boolean
@@ -11,6 +12,7 @@ interface SidebarProps {
 
 export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
   const { user, profile, avatarUrl, isPro } = useAuth()
+  const { canInstall, installPwa } = usePwaInstall()
 
   const sidebarClass = isOpen ? 'translate-x-0' : '-translate-x-full'
   const overlayClass = isOpen
@@ -148,6 +150,26 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
             <Info className="w-5 h-5" />
             Про проєкт
           </NavLink>
+
+          {/* Встановлення PWA для мобільних пристроїв та планшетів */}
+          {canInstall && (
+            <div className="pt-3">
+              <button
+                type="button"
+                onClick={() => {
+                  onClose()
+                  installPwa()
+                }}
+                className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-base font-semibold bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-500/30 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-500/20 transition-all shadow-xs"
+              >
+                <div className="flex items-center gap-3">
+                  <Smartphone className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+                  <span>Встановити</span>
+                </div>
+                <Download className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+              </button>
+            </div>
+          )}
         </nav>
       </aside>
     </>

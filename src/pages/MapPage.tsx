@@ -19,6 +19,7 @@ import {
   addOrUpdateLocation,
 } from '../features/meteo/utils/geoUtils'
 import type { SavedLocation, SectorInfo } from '../features/meteo/types/location'
+import { useAuth } from '../context/useAuth'
 
 // Виправлення шляхів до стандартних іконок маркерів Leaflet у Vite
 delete (L.Icon.Default.prototype as unknown as { _getIconUrl?: unknown })._getIconUrl
@@ -31,6 +32,7 @@ L.Icon.Default.mergeOptions({
 type MapLayerType = 'street' | 'satellite'
 
 export const MapPage: React.FC = () => {
+  const { user } = useAuth()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const returnTo = searchParams.get('returnTo') || '/app'
@@ -222,7 +224,7 @@ export const MapPage: React.FC = () => {
     setActiveLocation(loc)
 
     // Якщо користувач також захотів додати у список збережених
-    if (isSavedInList) {
+    if (user && isSavedInList) {
       addOrUpdateLocation(loc)
     }
 
@@ -231,7 +233,7 @@ export const MapPage: React.FC = () => {
 
   // Зберегти у список постійних місць
   const handleSaveToMyPlaces = () => {
-    if (!sectorInfo) return
+    if (!user || !sectorInfo) return
     const finalName = customName.trim() || settlement || `Сектор ${sectorInfo.sectorId}`
     const loc = addOrUpdateLocation({
       name: finalName,
@@ -338,14 +340,15 @@ export const MapPage: React.FC = () => {
           <div className="space-y-3 mt-3">
             <div>
               <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">
-                Власна назва локації
+                Власна назва локації {!user && <span className="text-amber-500 lowercase font-normal">(потрібна авторизація)</span>}
               </label>
               <input
                 type="text"
+                disabled={!user}
                 value={customName}
                 onChange={(e) => setCustomName(e.target.value)}
-                placeholder="Наприклад: База 1 або Вільнянськ Південь"
-                className="w-full px-3 py-1.5 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                placeholder={!user ? "Збереження назви доступне після авторизації" : "Наприклад: База 1 або Вільнянськ Південь"}
+                className="w-full px-3 py-1.5 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed"
               />
             </div>
 
@@ -353,9 +356,12 @@ export const MapPage: React.FC = () => {
               <button
                 type="button"
                 onClick={handleSaveToMyPlaces}
-                disabled={isSavedInList}
+                disabled={!user || isSavedInList}
+                title={!user ? "Збереження в «Мої місця» доступне лише після авторизації" : undefined}
                 className={`px-3 py-2 text-xs font-semibold rounded-xl border transition-all flex items-center justify-center gap-1.5 ${
-                  isSavedInList
+                  !user
+                    ? 'bg-slate-100 dark:bg-slate-800/40 border-slate-200 dark:border-slate-800 text-slate-400 dark:text-slate-600 cursor-not-allowed opacity-50'
+                    : isSavedInList
                     ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-500/40 text-emerald-700 dark:text-emerald-400'
                     : 'bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200'
                 }`}

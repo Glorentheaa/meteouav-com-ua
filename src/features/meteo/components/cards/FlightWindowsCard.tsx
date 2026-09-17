@@ -103,6 +103,94 @@ function getSectorColor(status: DialSectorStatus): { fill: string; stroke: strin
 }
 
 /**
+ * Допоміжний метод формування спрощеного тексту статусу без числових параметрів
+ * Наприклад: "Небезпечно: Пориви, вітер", "Увага: Пориви", "Ідеально: В нормі"
+ */
+function getSimplifiedIssueText(
+  status: DialSectorStatus,
+  issues: string[]
+): { title: string; subtitle?: string } {
+  const statusLabels: Record<DialSectorStatus, string> = {
+    past: 'Минулий час',
+    ideal: 'Ідеально',
+    favorable: 'Сприятливо',
+    attention: 'Увага',
+    warning: 'Наближення',
+    danger: 'Небезпечно',
+    no_data: 'Немає даних',
+  }
+
+  const baseLabel = statusLabels[status] || 'Умови в нормі'
+
+  if (status === 'past' || status === 'no_data') {
+    return { title: baseLabel }
+  }
+
+  if (status === 'ideal' || status === 'favorable') {
+    return { title: baseLabel, subtitle: 'В нормі' }
+  }
+
+  // Для attention, warning, danger витягуємо виключно назви чинників без цифр та параметрів
+  const detectedFactors: string[] = []
+  for (const issue of issues) {
+    const lower = issue.toLowerCase()
+    if (lower.includes('порив') && !detectedFactors.includes('Пориви')) {
+      detectedFactors.push('Пориви')
+    }
+    if (lower.includes('вітер') && !detectedFactors.includes('Вітер')) {
+      detectedFactors.push('Вітер')
+    }
+    if (lower.includes('опад') && !detectedFactors.includes('Опади')) {
+      detectedFactors.push('Опади')
+    }
+    if (lower.includes('туман') && !detectedFactors.includes('Туман')) {
+      detectedFactors.push('Туман')
+    } else if (lower.includes('видимість') && !detectedFactors.includes('Видимість') && !detectedFactors.includes('Туман')) {
+      detectedFactors.push('Видимість')
+    }
+    if (lower.includes('волог') && !detectedFactors.includes('Вологість')) {
+      detectedFactors.push('Вологість')
+    }
+    if (lower.includes('температур') && !detectedFactors.includes('Температура')) {
+      detectedFactors.push('Температура')
+    }
+    if (lower.includes('кр') && !detectedFactors.includes('КР-індекс')) {
+      detectedFactors.push('КР-індекс')
+    }
+    if (lower.includes('хмар') && !detectedFactors.includes('Хмарність')) {
+      detectedFactors.push('Хмарність')
+    }
+  }
+
+  // Якщо нічого не збіглося зі словником, беремо перше слово з issue без цифр
+  if (detectedFactors.length === 0 && issues.length > 0) {
+    for (const issue of issues) {
+      const clean = issue
+        .replace(/\s*\([^)]*\)/g, '')
+        .replace(/[0-9.,/:><°%—–-]/g, '')
+        .trim()
+        .split(' ')[0]
+      if (clean && !detectedFactors.includes(clean)) {
+        detectedFactors.push(clean)
+      }
+    }
+  }
+
+  const factorsStr =
+    detectedFactors.length > 0
+      ? detectedFactors
+          .slice(0, 2)
+          .map((f, i) => (i === 0 ? f : f.toLowerCase()))
+          .join(', ')
+      : ''
+
+  return {
+    title: baseLabel,
+    subtitle: factorsStr,
+  }
+}
+
+/**
  * Окремий 12-годинний циферблат з класичним розташуванням цифр
  */
 const TwelveHourClockDial: React.FC<{
@@ -120,19 +208,19 @@ const TwelveHourClockDial: React.FC<{
   const rLabels = 106
 
   return (
-    <div className="flex flex-col items-center w-full max-w-[270px] p-2.5 sm:p-3 rounded-2xl bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 shadow-xs select-none transition-all">
+    <div className="flex flex-col items-center w-full max-w-[170px] sm:max-w-[210px] p-1.5 sm:p-2.5 rounded-xl sm:rounded-2xl bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 shadow-xs select-none transition-all">
       {/* Заголовок циферблата */}
-      <div className="flex flex-col items-center mb-1 text-center">
-        <span className="text-xs font-bold text-slate-800 dark:text-slate-100 tracking-tight">
+      <div className="flex flex-col items-center mb-0.5 sm:mb-1 text-center w-full px-0.5">
+        <span className="text-[10px] sm:text-xs font-bold text-slate-800 dark:text-slate-100 tracking-tight leading-tight truncate max-w-full">
           {title}
         </span>
-        <span className="text-[10px] font-medium font-mono text-slate-400 dark:text-slate-500">
+        <span className="text-[8.5px] sm:text-[9.5px] font-medium font-mono text-slate-400 dark:text-slate-500">
           {subtitle}
         </span>
       </div>
 
       {/* SVG Циферблат */}
-      <div className="relative w-[210px] h-[210px] sm:w-[230px] sm:h-[230px] flex items-center justify-center">
+      <div className="relative w-full aspect-square max-w-[145px] sm:max-w-[185px] flex items-center justify-center">
         <svg
           viewBox="0 0 230 230"
           className="w-full h-full overflow-visible transition-transform duration-300"
@@ -190,7 +278,7 @@ const TwelveHourClockDial: React.FC<{
                 dominantBaseline="central"
                 className={`select-none pointer-events-none font-mono ${
                   isCardinal
-                    ? 'text-[10px] font-extrabold fill-slate-700 dark:fill-slate-300'
+                    ? 'text-[10px] font-black fill-slate-700 dark:fill-slate-300'
                     : 'text-[8.5px] font-semibold fill-slate-400 dark:fill-slate-500'
                 }`}
               >
@@ -210,81 +298,53 @@ const TwelveHourClockDial: React.FC<{
 
         {/* Інтерактивний центр циферблату */}
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-          <div className="w-[110px] h-[110px] rounded-full flex flex-col items-center justify-center p-1 text-center select-none">
+          <div className="w-[49%] h-[49%] rounded-full flex flex-col items-center justify-center p-0.5 text-center select-none overflow-hidden">
             {hoveredSector ? (
-              <div className="flex flex-col items-center justify-center animate-in fade-in zoom-in-90 duration-150 max-w-[104px]">
+              <div className="flex flex-col items-center justify-center animate-in fade-in zoom-in-90 duration-150 w-full px-0.5">
                 {/* Час */}
-                <span className="font-mono font-extrabold text-[11px] sm:text-xs text-slate-900 dark:text-slate-100 leading-tight">
+                <span className="font-mono font-black text-[9.5px] sm:text-[11px] text-slate-900 dark:text-slate-100 leading-none">
                   {hoveredSector.timeRangeStr}
                 </span>
 
-                {/* Статус */}
-                {hoveredSector.status === 'past' && (
-                  <span className="text-[9px] font-semibold text-slate-400 dark:text-slate-500 mt-0.5">
-                    Минулий час
-                  </span>
-                )}
-                {hoveredSector.status === 'ideal' && (
-                  <span className="text-[9.5px] font-bold text-emerald-600 dark:text-emerald-400 mt-0.5">
-                    Ідеально
-                  </span>
-                )}
-                {hoveredSector.status === 'favorable' && (
-                  <span className="text-[9.5px] font-bold text-emerald-700 dark:text-emerald-300 mt-0.5">
-                    Сприятливо
-                  </span>
-                )}
-                {hoveredSector.status === 'attention' && (
-                  <span className="text-[9.5px] font-bold text-yellow-600 dark:text-yellow-400 mt-0.5">
-                    Увага
-                  </span>
-                )}
-                {hoveredSector.status === 'warning' && (
-                  <span className="text-[9.5px] font-bold text-orange-600 dark:text-orange-400 mt-0.5">
-                    Наближення
-                  </span>
-                )}
-                {hoveredSector.status === 'danger' && (
-                  <span className="text-[9.5px] font-bold text-rose-600 dark:text-rose-400 mt-0.5">
-                    Небезпечно
-                  </span>
-                )}
-                {hoveredSector.status === 'no_data' && (
-                  <span className="text-[9px] text-slate-400 mt-0.5">
-                    Немає даних
-                  </span>
-                )}
-
-                {/* Назва параметру, чому небезпечно */}
-                {hoveredSector.issues.length > 0 && hoveredSector.status !== 'past' ? (
-                  <div className="flex flex-col items-center justify-center mt-0.5 leading-tight">
-                    {hoveredSector.issues.slice(0, 2).map((issue, idx) => {
-                      const cleanIssue = issue.replace(/\s*\([^)]*\)/g, '').trim()
-                      return (
-                        <span
-                          key={idx}
-                          className="text-[8px] sm:text-[8.5px] font-semibold text-rose-700 dark:text-rose-300 line-clamp-1"
-                          title={issue}
-                        >
-                          {cleanIssue}
-                        </span>
-                      )
-                    })}
-                  </div>
-                ) : (
-                  (hoveredSector.status === 'ideal' || hoveredSector.status === 'favorable') && (
-                    <span className="text-[8px] font-medium text-slate-500 dark:text-slate-400 mt-0.5">
-                      Умови в нормі
-                    </span>
+                {/* Статус + спрощені чинники без числових параметрів */}
+                {(() => {
+                  const { title: statusTitle, subtitle: factorsSubtitle } = getSimplifiedIssueText(
+                    hoveredSector.status,
+                    hoveredSector.issues
                   )
-                )}
+                  const colorClass =
+                    hoveredSector.status === 'danger'
+                      ? 'text-rose-600 dark:text-rose-400'
+                      : hoveredSector.status === 'warning'
+                      ? 'text-orange-600 dark:text-orange-400'
+                      : hoveredSector.status === 'attention'
+                      ? 'text-yellow-600 dark:text-yellow-400'
+                      : hoveredSector.status === 'favorable'
+                      ? 'text-emerald-700 dark:text-emerald-300'
+                      : hoveredSector.status === 'ideal'
+                      ? 'text-emerald-600 dark:text-emerald-400'
+                      : 'text-slate-400 dark:text-slate-500'
+
+                  return (
+                    <div className="flex flex-col items-center justify-center mt-0.5 text-center leading-tight">
+                      <span className={`text-[8.5px] sm:text-[9.5px] font-bold ${colorClass}`}>
+                        {factorsSubtitle ? `${statusTitle}:` : statusTitle}
+                      </span>
+                      {factorsSubtitle && (
+                        <span className={`text-[7px] sm:text-[8px] font-semibold leading-tight ${colorClass} line-clamp-2 px-0.5`}>
+                          {factorsSubtitle}
+                        </span>
+                      )}
+                    </div>
+                  )
+                })()}
               </div>
             ) : (
               <div className="flex flex-col items-center justify-center leading-tight">
-                <span className="text-xs sm:text-[13px] font-extrabold text-slate-800 dark:text-slate-100 tracking-tight">
+                <span className="text-[9.5px] sm:text-[11px] font-extrabold text-slate-800 dark:text-slate-100 tracking-tight">
                   Вікна для
                 </span>
-                <span className="text-xs sm:text-[13px] font-extrabold text-slate-800 dark:text-slate-100 tracking-tight">
+                <span className="text-[9.5px] sm:text-[11px] font-extrabold text-slate-800 dark:text-slate-100 tracking-tight">
                   польотів
                 </span>
               </div>
@@ -494,15 +554,15 @@ export const FlightWindowsCard: React.FC<FlightWindowsCardProps> = ({
     >
       <div className="w-full flex flex-col justify-between flex-1 min-h-0 gap-4">
         {/* ================= КОНТЕЙНЕР 1: СЬОГОДНІ ================= */}
-        <div className="w-full flex flex-col p-3 sm:p-3.5 rounded-2xl bg-slate-50/70 dark:bg-slate-900/40 border border-slate-200/90 dark:border-slate-800/90 shadow-xs">
-          <div className="flex items-center gap-2 mb-2.5 px-1">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 shadow-xs" />
-            <h4 className="text-xs sm:text-sm font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200">
+        <div className="w-full flex flex-col p-2.5 sm:p-3.5 rounded-2xl bg-slate-50/70 dark:bg-slate-900/40 border border-slate-200/90 dark:border-slate-800/90 shadow-xs">
+          <div className="flex items-center gap-1.5 mb-2 px-0.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-xs" />
+            <h4 className="text-[11px] sm:text-xs font-bold text-slate-700 dark:text-slate-300">
               Сьогодні
             </h4>
           </div>
 
-          <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-4 w-full">
+          <div className={`w-full ${isTodayAmRelevant ? 'grid grid-cols-2 gap-1.5 sm:gap-3 justify-items-center' : 'flex justify-center'}`}>
             {isTodayAmRelevant && (
               <TwelveHourClockDial
                 title={`${todayFormattedShort} (Ніч / Ранок)`}
@@ -521,15 +581,15 @@ export const FlightWindowsCard: React.FC<FlightWindowsCardProps> = ({
         </div>
 
         {/* ================= КОНТЕЙНЕР 2: ЗАВТРА ================= */}
-        <div className="w-full flex flex-col p-3 sm:p-3.5 rounded-2xl bg-slate-50/70 dark:bg-slate-900/40 border border-slate-200/90 dark:border-slate-800/90 shadow-xs">
-          <div className="flex items-center gap-2 mb-2.5 px-1">
-            <span className="w-2 h-2 rounded-full bg-indigo-500 shadow-xs" />
-            <h4 className="text-xs sm:text-sm font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200">
+        <div className="w-full flex flex-col p-2.5 sm:p-3.5 rounded-2xl bg-slate-50/70 dark:bg-slate-900/40 border border-slate-200/90 dark:border-slate-800/90 shadow-xs">
+          <div className="flex items-center gap-1.5 mb-2 px-0.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 shadow-xs" />
+            <h4 className="text-[11px] sm:text-xs font-bold text-slate-700 dark:text-slate-300">
               Завтра
             </h4>
           </div>
 
-          <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-4 w-full">
+          <div className="w-full grid grid-cols-2 gap-1.5 sm:gap-3 justify-items-center">
             <TwelveHourClockDial
               title={`${tomorrowFormattedShort} (Ніч / Ранок)`}
               subtitle="00:00 – 12:00"
@@ -552,7 +612,7 @@ export const FlightWindowsCard: React.FC<FlightWindowsCardProps> = ({
         */}
         <div className="flex flex-col items-start gap-1.5 pt-1 shrink-0">
           {/* Розшифровка кольорів попереджень в один рядок */}
-          <div className="flex flex-wrap items-center gap-2 sm:gap-2.5 text-[9.5px] sm:text-[10px] font-semibold">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-2.5 text-[9px] sm:text-[10px] font-semibold">
             <span className="flex items-center gap-1" title="Час від початку доби до поточного прогнозу">
               <span className="w-2.5 h-2.5 rounded-xs bg-slate-400 dark:bg-slate-600 shadow-2xs" />
               <span className="text-slate-500 dark:text-slate-400">Минулий</span>
@@ -575,7 +635,7 @@ export const FlightWindowsCard: React.FC<FlightWindowsCardProps> = ({
             </span>
             <span className="flex items-center gap-1" title="Перевищення критичних показників">
               <span className="w-2.5 h-2.5 rounded-xs bg-rose-500 shadow-2xs" />
-              <span className="text-rose-700 dark:text-rose-400">Перевищення</span>
+              <span className="text-rose-700 dark:text-rose-400">Небезпечно</span>
             </span>
           </div>
 

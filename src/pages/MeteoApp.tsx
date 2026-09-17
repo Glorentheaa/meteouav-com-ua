@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { RefreshCw, Loader2, CheckCircle2, AlertCircle, Radar, MapPin } from 'lucide-react'
+import { RefreshCw, Loader2, Radar, MapPin } from 'lucide-react'
 
 // Hooks & utils
 import { useAuth } from '../context/useAuth'
@@ -27,7 +27,7 @@ import { MeteorologistCard } from '../features/meteo/components/cards/Meteorolog
 import { WeeklyForecastCard } from '../features/meteo/components/cards/WeeklyForecastCard'
 import { SunMoonCard } from '../features/meteo/components/cards/SunMoonCard'
 
-const APPLIED_STATE_STORAGE_KEY = 'meteo_applied_state_v3'
+const APPLIED_STATE_STORAGE_KEY = 'meteo_applied_state_v4'
 
 interface AppliedForecastState {
   location: SavedLocation
@@ -79,6 +79,22 @@ export const MeteoApp: React.FC = () => {
       if (saved) {
         return JSON.parse(saved)
       }
+      // Міграція зі старого кешу (v3): автоматично оновлюємо дані прогнозу для показу всієї градації
+      const oldSaved = localStorage.getItem('meteo_applied_state_v3')
+      if (oldSaved) {
+        const parsed = JSON.parse(oldSaved)
+        if (parsed?.location) {
+          const freshData = generateMockForecast(parsed.location.sectorId, parsed.location.name)
+          const freshState: AppliedForecastState = {
+            ...parsed,
+            forecastData: freshData,
+            lastUpdated: getUaTime(),
+            forecastDates: getForecastDatesText(),
+          }
+          localStorage.setItem(APPLIED_STATE_STORAGE_KEY, JSON.stringify(freshState))
+          return freshState
+        }
+      }
     } catch (e) {
       console.error('Помилка читання збереженого прогнозу:', e)
     }
@@ -96,7 +112,7 @@ export const MeteoApp: React.FC = () => {
     } catch {}
 
     try {
-      const saved = localStorage.getItem(APPLIED_STATE_STORAGE_KEY)
+      const saved = localStorage.getItem(APPLIED_STATE_STORAGE_KEY) || localStorage.getItem('meteo_applied_state_v3')
       if (saved) {
         const parsed = JSON.parse(saved)
         if (parsed?.location) return parsed.location
@@ -127,45 +143,24 @@ export const MeteoApp: React.FC = () => {
   }, [selectedLocation?.sectorId])
 
   const [isRefreshing, setIsRefreshing] = useState(false)
-  const [statusFeedback, setStatusFeedback] = useState<{
-    type: 'success' | 'error'
-    message: string
-  } | null>(null)
-
   const [autoUpdated] = useState(getUaTime)
 
   // Обробник збереження налаштувань у висувній панелі
   const handleDrawerSave = () => {
     handleSave()
-    setStatusFeedback({
-      type: 'success',
-      message: 'Параметри збережено. Натисніть «Оновити прогноз», щоб застосувати зміни до карток.',
-    })
-    setTimeout(() => setStatusFeedback(null), 6000)
   }
 
   const handleDrawerFactoryReset = () => {
     handleFactoryReset()
-    setStatusFeedback({
-      type: 'success',
-      message: 'Параметри скинуто. Натисніть «Оновити прогноз», щоб застосувати зміни.',
-    })
-    setTimeout(() => setStatusFeedback(null), 6000)
   }
 
   // Обробник натискання кнопки "Оновити прогноз"
   const handleRefresh = async () => {
     if (!selectedLocation) {
-      setStatusFeedback({
-        type: 'error',
-        message: 'Для початку роботи оберіть локацію зі списку або введіть координати!',
-      })
-      setTimeout(() => setStatusFeedback(null), 5000)
       return
     }
 
     setIsRefreshing(true)
-    setStatusFeedback(null)
 
     // Формуємо корисне навантаження на базі збережених/активних параметрів користувача
     const payload = buildMeteoPayload({
@@ -201,11 +196,6 @@ export const MeteoApp: React.FC = () => {
       setAppliedForecast(newAppliedState)
       localStorage.setItem(APPLIED_STATE_STORAGE_KEY, JSON.stringify(newAppliedState))
       setActiveLocation(selectedLocation)
-
-      setStatusFeedback({
-        type: res.success ? 'success' : 'error',
-        message: res.message || 'Прогноз успішно оновлено',
-      })
     } catch (e) {
       console.error('Помилка оновлення прогнозу:', e)
       // Автономний фолбек на мок-дані для безперервної роботи
@@ -223,16 +213,8 @@ export const MeteoApp: React.FC = () => {
       setAppliedForecast(fallbackAppliedState)
       localStorage.setItem(APPLIED_STATE_STORAGE_KEY, JSON.stringify(fallbackAppliedState))
       setActiveLocation(selectedLocation)
-
-      setStatusFeedback({
-        type: 'error',
-        message: 'Не вдалося зв’язатися з погодним сервером. Завантажено резервні тактичні дані.',
-      })
     } finally {
       setIsRefreshing(false)
-      setTimeout(() => {
-        setStatusFeedback(null)
-      }, 5000)
     }
   }
 
@@ -248,24 +230,6 @@ export const MeteoApp: React.FC = () => {
             Просте використання, найточніші дані, легка доступність в поєднанні з розширеними можливостями.
           </p>
         </div>
-
-        {/* Сповіщення про статус відправки запиту */}
-        {statusFeedback && (
-          <div
-            className={`p-3 rounded-xl border text-xs flex items-center gap-2 animate-in fade-in duration-200 ${
-              statusFeedback.type === 'success'
-                ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-700 dark:text-emerald-400'
-                : 'bg-rose-500/10 border-rose-500/30 text-rose-600 dark:text-rose-400'
-            }`}
-          >
-            {statusFeedback.type === 'success' ? (
-              <CheckCircle2 className="w-4 h-4 shrink-0" />
-            ) : (
-              <AlertCircle className="w-4 h-4 shrink-0" />
-            )}
-            <span>{statusFeedback.message}</span>
-          </div>
-        )}
 
         {/* Основна панель керування */}
         <div className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl shadow-sm mt-2 flex flex-col transition-all duration-300">

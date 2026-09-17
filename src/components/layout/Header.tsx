@@ -3,6 +3,7 @@ import { Menu, Smartphone, Download } from 'lucide-react'
 import { Logo } from '../common/Logo'
 import { ThemeSwitcher, type Theme } from '../common/ThemeSwitcher'
 import { useLocation } from 'react-router-dom'
+import { usePwaInstall } from '../../hooks/usePwaInstall'
 
 export const Header: React.FC<{ onMenuClick?: () => void }> = ({ onMenuClick }) => {
   const location = useLocation()
@@ -11,7 +12,8 @@ export const Header: React.FC<{ onMenuClick?: () => void }> = ({ onMenuClick }) 
   const [theme, setTheme] = useState<Theme>(() => {
     return (localStorage.getItem('theme') as Theme) || 'system'
   })
-  const [isScrolled, setIsScrolled] = useState(false)
+
+  const { canInstall, installPwa } = usePwaInstall()
 
   // Обробка теми
   useEffect(() => {
@@ -29,91 +31,42 @@ export const Header: React.FC<{ onMenuClick?: () => void }> = ({ onMenuClick }) 
     }
   }, [theme])
 
-  // Обробка скролінгу для мобільного меню з авто-дотягуванням
-  useEffect(() => {
-    let scrollTimeout: ReturnType<typeof setTimeout>
-    let lastScrollY = window.scrollY
-    let isScrollingUp = false
-
-    const handleScroll = () => {
-      const currentScrollY = window.scrollY
-
-      // Визначаємо напрямок скролу
-      isScrollingUp = currentScrollY < lastScrollY
-      lastScrollY = currentScrollY > 0 ? currentScrollY : 0
-
-      if (currentScrollY > 80) {
-        // Ховаємо з безпечним запасом
-        setIsScrolled(true)
-      } else if (currentScrollY === 0) {
-        // Відкриваємо елементи ВИКЛЮЧНО на абсолютному нулі сторінки
-        setIsScrolled(false)
-      }
-
-      // Очищаємо попередній таймер при кожному мікрорусі
-      clearTimeout(scrollTimeout)
-
-      // Встановлюємо новий таймер, який спрацює, коли скрол зупиниться
-      scrollTimeout = setTimeout(() => {
-        const finalScrollY = window.scrollY
-        // Якщо зупинилися "майже" нагорі (між 1 та 50 пікселями) І напрямок був ВГОРУ
-        if (finalScrollY > 0 && finalScrollY < 50 && isScrollingUp) {
-          // Плавно дотягуємо сторінку на самий верх
-          window.scrollTo({ top: 0, behavior: 'smooth' })
-        }
-      }, 150)
-    }
-
-    window.addEventListener('scroll', handleScroll, { passive: true })
-    return () => {
-      window.removeEventListener('scroll', handleScroll)
-      clearTimeout(scrollTimeout)
-    }
-  }, [])
-
   return (
     <header className="sticky top-0 z-50 w-full border-b border-slate-300 dark:border-slate-800 bg-slate-200 dark:bg-slate-950 transition-colors">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3">
-        <div className="flex flex-col sm:flex-row w-full justify-between items-start sm:items-center">
-          <div className="flex items-center justify-between w-full sm:w-auto z-10 bg-slate-200 dark:bg-slate-950">
-            <div className="flex items-center gap-4">
-              {!isHome && (
-                <button
-                  type="button"
-                  onClick={onMenuClick}
-                  className="p-1.5 rounded-md text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100 hover:bg-slate-300 dark:hover:bg-slate-800 transition-colors"
-                >
-                  <Menu className="w-6 h-6" />
-                </button>
-              )}
-              <Logo />
-            </div>
-            <div className="ml-6">
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 py-2.5">
+        <div className="flex w-full items-center justify-between gap-2">
+          {/* Ліва частина: Меню + Лого + Перемикач тем в один нерозривний ряд */}
+          <div className="flex items-center gap-2 sm:gap-3.5 min-w-0">
+            {!isHome && (
+              <button
+                type="button"
+                onClick={onMenuClick}
+                className="p-1.5 rounded-md text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100 hover:bg-slate-300 dark:hover:bg-slate-800 transition-colors shrink-0"
+                aria-label="Відкрити меню"
+              >
+                <Menu className="w-5 h-5 sm:w-6 sm:h-6" />
+              </button>
+            )}
+            <Logo />
+            <div className="ml-1 sm:ml-2 shrink-0">
               <ThemeSwitcher theme={theme} onThemeChange={setTheme} />
             </div>
           </div>
 
-          {/* Контейнер, який ховається при скролінгу на мобілках */}
-          <div
-            className={`flex flex-col sm:flex-row items-center w-full sm:w-auto gap-3 transition-all duration-300 ease-in-out origin-top overflow-hidden sm:overflow-visible ${
-              isScrolled
-                ? 'max-h-0 opacity-0 sm:max-h-20 sm:opacity-100 mt-0 scale-y-95 sm:scale-y-100'
-                : 'max-h-[100px] opacity-100 mt-3 sm:mt-0 scale-y-100'
-            }`}
-          >
-            <ThemeSwitcher theme={theme} onThemeChange={setTheme} isMobile />
-
-            {!isHome && (
+          {/* Права частина: Кнопка «Встановити» для планшетів / широких мобільних екранів (на ПК не відображається) */}
+          {!isHome && canInstall && (
+            <div className="hidden md:flex items-center">
               <button
                 type="button"
-                className="flex items-center justify-center gap-2 px-3 py-2 sm:py-1.5 rounded-lg border border-emerald-500/30 hover:border-emerald-500 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 transition-all w-full sm:w-auto shadow-sm"
+                onClick={installPwa}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-emerald-500/30 hover:border-emerald-500 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 transition-all shadow-xs text-xs font-semibold"
               >
-                <Smartphone className="w-4 h-4" />
-                <span className="font-semibold text-sm">Встановити</span>
-                <Download className="w-4 h-4" />
+                <Smartphone className="w-3.5 h-3.5" />
+                <span>Встановити</span>
+                <Download className="w-3.5 h-3.5" />
               </button>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       </div>
     </header>
