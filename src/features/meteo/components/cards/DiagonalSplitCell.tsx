@@ -91,9 +91,8 @@ export const DiagonalSplitCell: React.FC<DiagonalSplitCellProps> = ({
           </span>
         )}
         <span
-          className={`font-bold tracking-tight ${
-            isExpanded ? 'text-xs sm:text-sm' : 'text-[10px] sm:text-[11px]'
-          }`}
+          className={`font-bold tracking-tight ${isExpanded ? 'text-xs sm:text-sm' : 'text-[10px] sm:text-[11px]'
+            }`}
         >
           {topValue}
         </span>
@@ -105,9 +104,8 @@ export const DiagonalSplitCell: React.FC<DiagonalSplitCellProps> = ({
         style={{ background: 'transparent' }}
       >
         <span
-          className={`font-bold tracking-tight ${
-            isExpanded ? 'text-xs sm:text-sm' : 'text-[10px] sm:text-[11px]'
-          }`}
+          className={`font-bold tracking-tight ${isExpanded ? 'text-xs sm:text-sm' : 'text-[10px] sm:text-[11px]'
+            }`}
         >
           {bottomValue}
         </span>

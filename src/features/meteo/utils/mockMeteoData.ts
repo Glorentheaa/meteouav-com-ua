@@ -36,8 +36,8 @@ export function generateMockForecast(
     const surfaceWind = Number((baseSurfaceWind * dayWindFactor + (Math.random() * 1.5 - 0.7)).toFixed(1))
     const surfaceGusts = Number((surfaceWind * (1.35 + Math.random() * 0.3)).toFixed(1))
 
-    // Невелике коливання напрямку
-    baseDirection = (baseDirection + Math.floor(Math.random() * 11 - 5) + 360) % 360
+    // Напрямок руху вітру (плавний поворот по всій осі часу для наочної перевірки індикатора)
+    const currentWindDirection = Math.round((45 + i * 25) % 360)
 
     // Опади (наприклад, періодичний дощ у другій половині доби)
     const hasRain = (i >= 8 && i <= 14) || (i >= 30 && i <= 34)
@@ -117,7 +117,7 @@ export function generateMockForecast(
       temp,
       surfaceWind,
       surfaceGusts,
-      windDirectionDeg: baseDirection,
+      windDirectionDeg: currentWindDirection,
       precipMm,
       humidity,
       visibilityKm,

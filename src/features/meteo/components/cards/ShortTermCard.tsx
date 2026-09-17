@@ -168,9 +168,8 @@ const ForecastGrid: React.FC<ForecastGridProps> = ({
         onClick={() => handleScroll('left')}
         disabled={!canScrollLeft}
         aria-label="Прокрутити вліво"
-        className={`absolute left-[118px] sm:left-[142px] top-1/2 -translate-y-1/2 z-30 p-1 rounded-full bg-slate-800/90 text-slate-200 border border-slate-600/70 shadow-lg hover:bg-slate-700 transition-all ${
-          canScrollLeft ? 'opacity-90 hover:scale-110 cursor-pointer' : 'opacity-0 pointer-events-none'
-        }`}
+        className={`absolute left-[118px] sm:left-[142px] top-1/2 -translate-y-1/2 z-30 p-1 rounded-full bg-slate-800/90 text-slate-200 border border-slate-600/70 shadow-lg hover:bg-slate-700 transition-all ${canScrollLeft ? 'opacity-90 hover:scale-110 cursor-pointer' : 'opacity-0 pointer-events-none'
+          }`}
       >
         <ChevronLeft className="w-4 h-4" />
       </button>
@@ -180,9 +179,8 @@ const ForecastGrid: React.FC<ForecastGridProps> = ({
         onClick={() => handleScroll('right')}
         disabled={!canScrollRight}
         aria-label="Прокрутити вправо"
-        className={`absolute right-1.5 top-1/2 -translate-y-1/2 z-30 p-1 rounded-full bg-slate-800/90 text-slate-200 border border-slate-600/70 shadow-lg hover:bg-slate-700 transition-all ${
-          canScrollRight ? 'opacity-90 hover:scale-110 cursor-pointer' : 'opacity-0 pointer-events-none'
-        }`}
+        className={`absolute right-1.5 top-1/2 -translate-y-1/2 z-30 p-1 rounded-full bg-slate-800/90 text-slate-200 border border-slate-600/70 shadow-lg hover:bg-slate-700 transition-all ${canScrollRight ? 'opacity-90 hover:scale-110 cursor-pointer' : 'opacity-0 pointer-events-none'
+          }`}
       >
         <ChevronRight className="w-4 h-4" />
       </button>
@@ -195,87 +193,87 @@ const ForecastGrid: React.FC<ForecastGridProps> = ({
       >
         {/* ================= ЛІВА ФІКСОВАНА КОЛОНКА ПАРАМЕТРІВ ================= */}
         <div
-          className={`sticky left-0 z-20 shrink-0 bg-slate-900/95 backdrop-blur-md border-r border-slate-700/80 shadow-md ${
-            isExpanded ? 'w-[148px]' : 'w-[124px] sm:w-[138px]'
-          }`}
+          className={`sticky left-0 z-20 shrink-0 bg-slate-900/95 backdrop-blur-md border-r border-slate-700/80 shadow-md ${isExpanded ? 'w-[148px]' : 'w-[124px] sm:w-[138px]'
+            }`}
         >
           {/* Рядок 1: Година */}
+          {/* Рядок 1: Година */}
           <div
-            className={`flex items-center gap-1.5 px-2.5 font-bold text-slate-200 border-b border-slate-700/60 ${
+            className={`flex items-center gap-1.5 px-2.5 font-bold text-slate-800 dark:text-slate-200 border-b border-slate-300 dark:border-slate-700/60 ${
               isExpanded ? 'h-14 text-xs sm:text-sm' : 'h-11 text-[11px]'
             }`}
           >
-            <Clock className="w-3.5 h-3.5 text-sky-400 shrink-0" />
+            <Clock className="w-3.5 h-3.5 text-sky-500 dark:text-sky-400 shrink-0" />
             <span className="truncate">Година</span>
           </div>
 
-          {/* Рядок 2: Температура */}
+          {/* Рядок 2: Температура, °C */}
           <div
-            className={`flex items-center gap-1.5 px-2.5 font-semibold text-slate-300 border-b border-slate-700/60 ${
+            className={`flex items-center gap-1.5 px-2.5 font-semibold text-slate-700 dark:text-slate-300 border-b border-slate-300 dark:border-slate-700/60 ${
               isExpanded ? 'h-[46px] text-xs' : 'h-[38px] text-[10px] sm:text-[11px]'
             }`}
           >
-            <Thermometer className="w-3.5 h-3.5 text-rose-400 shrink-0" />
-            <span className="truncate">Температура (°C)</span>
+            <Thermometer className="w-3.5 h-3.5 text-rose-500 dark:text-rose-400 shrink-0" />
+            <span className="truncate">Температура, °C</span>
           </div>
 
-          {/* Рядок 3: Вітер / Пориви */}
+          {/* Рядок 3: Вітер / Пориви, м/с */}
           <div
-            className={`flex items-center gap-1.5 px-2.5 font-semibold text-slate-300 border-b border-slate-700/60 ${
+            className={`flex items-center gap-1.5 px-2.5 font-semibold text-slate-700 dark:text-slate-300 border-b border-slate-300 dark:border-slate-700/60 ${
               isExpanded ? 'h-12 text-xs' : 'h-10 text-[10px] sm:text-[11px]'
             }`}
           >
-            <Wind className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
-            <span className="truncate">Вітер / Пориви</span>
+            <Wind className="w-3.5 h-3.5 text-cyan-600 dark:text-cyan-400 shrink-0" />
+            <span className="truncate">Вітер / Пор., м/с</span>
           </div>
 
-          {/* Рядок 4: Напрям вітру */}
+          {/* Рядок 4: Напрям вітру, ° */}
           <div
-            className={`flex items-center gap-1.5 px-2.5 font-semibold text-slate-300 border-b border-slate-700/60 ${
+            className={`flex items-center gap-1.5 px-2.5 font-semibold text-slate-700 dark:text-slate-300 border-b border-slate-300 dark:border-slate-700/60 ${
               isExpanded ? 'h-11 text-xs' : 'h-9 text-[10px] sm:text-[11px]'
             }`}
           >
-            <Navigation className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
-            <span className="truncate">Напрям вітру</span>
+            <Navigation className="w-3.5 h-3.5 text-indigo-500 dark:text-indigo-400 shrink-0" />
+            <span className="truncate">Напрям вітру, °</span>
           </div>
 
-          {/* Рядок 5: Кромка хмар / Хмарність */}
+          {/* Рядок 5: Кромка, м / Хмарн., % */}
           <div
-            className={`flex items-center gap-1.5 px-2.5 font-semibold text-slate-300 border-b border-slate-700/60 ${
+            className={`flex items-center gap-1.5 px-2.5 font-semibold text-slate-700 dark:text-slate-300 border-b border-slate-300 dark:border-slate-700/60 ${
               isExpanded ? 'h-12 text-xs' : 'h-10 text-[10px] sm:text-[11px]'
             }`}
           >
-            <Cloud className="w-3.5 h-3.5 text-slate-300 shrink-0" />
-            <span className="truncate">Кромка / Хмарн.</span>
+            <Cloud className="w-3.5 h-3.5 text-slate-500 dark:text-slate-300 shrink-0" />
+            <span className="truncate">Кромка, м / Хм., %</span>
           </div>
 
-          {/* Рядок 6: Опади / Вологість */}
+          {/* Рядок 6: Опади, мм / Волог., % */}
           <div
-            className={`flex items-center gap-1.5 px-2.5 font-semibold text-slate-300 border-b border-slate-700/60 ${
+            className={`flex items-center gap-1.5 px-2.5 font-semibold text-slate-700 dark:text-slate-300 border-b border-slate-300 dark:border-slate-700/60 ${
               isExpanded ? 'h-12 text-xs' : 'h-10 text-[10px] sm:text-[11px]'
             }`}
           >
-            <Droplets className="w-3.5 h-3.5 text-blue-400 shrink-0" />
-            <span className="truncate">Опади / Волог.</span>
+            <Droplets className="w-3.5 h-3.5 text-blue-500 dark:text-blue-400 shrink-0" />
+            <span className="truncate">Опади, мм / Вол., %</span>
           </div>
 
-          {/* Рядок 7: Видимість / Туман */}
+          {/* Рядок 7: Видимість, км / Туман */}
           <div
-            className={`flex items-center gap-1.5 px-2.5 font-semibold text-slate-300 border-b border-slate-700/60 ${
+            className={`flex items-center gap-1.5 px-2.5 font-semibold text-slate-700 dark:text-slate-300 border-b border-slate-300 dark:border-slate-700/60 ${
               isExpanded ? 'h-12 text-xs' : 'h-10 text-[10px] sm:text-[11px]'
             }`}
           >
-            <Eye className="w-3.5 h-3.5 text-teal-400 shrink-0" />
-            <span className="truncate">Видим. / Туман</span>
+            <Eye className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400 shrink-0" />
+            <span className="truncate">Видим., км / Туман</span>
           </div>
 
           {/* Рядок 8: КР-індекс */}
           <div
-            className={`flex items-center gap-1.5 px-2.5 font-semibold text-slate-300 ${
+            className={`flex items-center gap-1.5 px-2.5 font-semibold text-slate-700 dark:text-slate-300 ${
               isExpanded ? 'h-10 text-xs' : 'h-8 text-[10px] sm:text-[11px]'
             }`}
           >
-            <Magnet className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+            <Magnet className="w-3.5 h-3.5 text-amber-500 dark:text-amber-400 shrink-0" />
             <span className="truncate">КР-індекс</span>
           </div>
         </div>
@@ -287,9 +285,8 @@ const ForecastGrid: React.FC<ForecastGridProps> = ({
         >
           {/* ---------------- Рядок 1: Година + Іконка погоди ---------------- */}
           <div
-            className={`flex border-b border-slate-700/60 bg-slate-900/60 ${
-              isExpanded ? 'h-14' : 'h-11'
-            }`}
+            className={`flex border-b border-slate-700/60 bg-slate-900/60 ${isExpanded ? 'h-14' : 'h-11'
+              }`}
           >
             {points.map((pt) => {
               const cloudCover = pt.cloudCoverPct ?? (pt.cloudBaseM < 800 ? 80 : 30)
@@ -308,9 +305,8 @@ const ForecastGrid: React.FC<ForecastGridProps> = ({
                     className={isExpanded ? 'w-5 h-5' : 'w-4 h-4'}
                   />
                   <span
-                    className={`font-bold tracking-tight text-slate-200 mt-0.5 ${
-                      isExpanded ? 'text-xs' : 'text-[10px]'
-                    }`}
+                    className={`font-bold tracking-tight text-slate-200 mt-0.5 ${isExpanded ? 'text-xs' : 'text-[10px]'
+                      }`}
                   >
                     {pt.time}
                   </span>
@@ -321,7 +317,7 @@ const ForecastGrid: React.FC<ForecastGridProps> = ({
 
           {/* ---------------- Рядок 2: Температура + Крива Безьє ---------------- */}
           <div
-            className="relative flex border-b border-slate-700/60 bg-slate-950/40"
+            className="relative flex border-b border-slate-300 dark:border-slate-700/60 bg-slate-50/40 dark:bg-slate-950/40"
             style={{ height: `${rowHeightTemp}px` }}
           >
             {/* Фоновий SVG з плавною кривою температури */}
@@ -332,64 +328,54 @@ const ForecastGrid: React.FC<ForecastGridProps> = ({
             >
               <defs>
                 <linearGradient id="tempAreaGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#10b981" stopOpacity="0.22" />
-                  <stop offset="100%" stopColor="#10b981" stopOpacity="0.0" />
+                  <stop offset="0%" stopColor="#f97316" stopOpacity="0.45" />
+                  <stop offset="65%" stopColor="#f97316" stopOpacity="0.18" />
+                  <stop offset="100%" stopColor="#f97316" stopOpacity="0.0" />
                 </linearGradient>
               </defs>
 
-              {/* Заливка під кривою */}
+              {/* Заливка (тінь) під кривою температури */}
               {tempSpline.areaPath && (
                 <path d={tempSpline.areaPath} fill="url(#tempAreaGrad)" />
               )}
 
-              {/* Плавна лінія температури */}
+              {/* Тонка помаранчева лінія температури (без точок) */}
               {tempSpline.path && (
                 <path
                   d={tempSpline.path}
                   fill="none"
-                  stroke="#34d399"
-                  strokeWidth={isExpanded ? 2.5 : 2}
+                  stroke="#f97316"
+                  strokeWidth={isExpanded ? 1.5 : 1.2}
                   strokeLinecap="round"
                   strokeLinejoin="round"
-                  className="drop-shadow-[0_0_3px_rgba(52,211,153,0.6)]"
+                  className="drop-shadow-[0_0_2px_rgba(249,115,22,0.5)]"
                 />
               )}
-
-              {/* Точки на кривій */}
-              {tempSpline.coords.map((c, idx) => (
-                <circle
-                  key={`dot-${idx}`}
-                  cx={c.x}
-                  cy={c.y}
-                  r={isExpanded ? 3.5 : 2.5}
-                  className="fill-emerald-400 stroke-slate-900 stroke-2"
-                />
-              ))}
             </svg>
 
             {/* Колонки температури з індивідуальними фоновими статусами безпеки */}
             {points.map((pt) => {
               const tempSev = evaluateTemp(pt.temp, warnings.minTemp, warnings.maxTemp)
-              let bgClass = 'bg-emerald-950/20 text-emerald-300'
+              let bgClass = 'bg-emerald-50/80 text-emerald-900 dark:bg-emerald-950/20 dark:text-emerald-300'
               if (tempSev === 'danger') {
-                bgClass = 'bg-rose-900/50 text-rose-300 font-bold'
+                bgClass = 'bg-rose-100 text-rose-900 dark:bg-rose-900/50 dark:text-rose-300 font-bold'
               } else if (tempSev === 'warning') {
-                bgClass = 'bg-amber-900/40 text-amber-300 font-semibold'
+                bgClass = 'bg-amber-100 text-amber-900 dark:bg-amber-900/40 dark:text-amber-300 font-semibold'
               }
 
               return (
                 <div
                   key={`temp-${pt.timestamp}`}
                   style={{ width: `${colWidth}px` }}
-                  className={`relative flex items-center justify-center border-r border-slate-800/80 transition-colors z-10 ${bgClass}`}
+                  className={`relative flex items-center justify-center border-r border-slate-200 dark:border-slate-800/80 transition-colors z-10 ${bgClass}`}
                   title={`Температура: ${pt.temp > 0 ? `+${pt.temp}` : pt.temp}°C (${tempSev})`}
                 >
                   <span
-                    className={`font-bold drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)] ${
+                    className={`font-bold drop-shadow-[0_1px_1px_rgba(0,0,0,0.15)] dark:drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)] ${
                       isExpanded ? 'text-xs sm:text-sm' : 'text-[10px] sm:text-[11px]'
                     }`}
                   >
-                    {pt.temp > 0 ? `+${pt.temp}` : pt.temp}°
+                    {pt.temp > 0 ? `+${pt.temp}` : pt.temp}
                   </span>
                 </div>
               )
@@ -426,7 +412,7 @@ const ForecastGrid: React.FC<ForecastGridProps> = ({
 
           {/* ---------------- Рядок 4: Напрям вітру (Авіаційна пір'їнка) ---------------- */}
           <div
-            className={`flex items-center border-b border-slate-700/60 bg-slate-950/50 ${
+            className={`flex items-center border-b border-slate-300 dark:border-slate-700/60 bg-slate-50/60 dark:bg-slate-950/50 ${
               isExpanded ? 'h-11' : 'h-9'
             }`}
           >
@@ -434,7 +420,7 @@ const ForecastGrid: React.FC<ForecastGridProps> = ({
               <div
                 key={`dir-${pt.timestamp}`}
                 style={{ width: `${colWidth}px` }}
-                className="flex items-center justify-center border-r border-slate-800/80 py-0.5"
+                className="flex items-center justify-center border-r border-slate-200 dark:border-slate-800/80 py-0.5"
               >
                 <AviationWindBarb
                   speedMs={pt.surfaceWind}
@@ -448,7 +434,7 @@ const ForecastGrid: React.FC<ForecastGridProps> = ({
 
           {/* ---------------- Рядок 5: Кромка хмар / Хмарність (Діагональний спліт) ---------------- */}
           <div
-            className={`flex border-b border-slate-700/60 ${isExpanded ? 'h-12' : 'h-10'}`}
+            className={`flex border-b border-slate-300 dark:border-slate-700/60 ${isExpanded ? 'h-12' : 'h-10'}`}
           >
             {points.map((pt) => {
               const cloudSev = evaluateCloudBase(pt.cloudBaseM, maxFlightLevelM)
@@ -459,13 +445,13 @@ const ForecastGrid: React.FC<ForecastGridProps> = ({
                 <div
                   key={`cloud-${pt.timestamp}`}
                   style={{ width: `${colWidth}px` }}
-                  className="p-0.5 border-r border-slate-800/80"
+                  className="p-0.5 border-r border-slate-200 dark:border-slate-800/80"
                 >
                   <DiagonalSplitCell
                     topValue={pt.cloudBaseM}
                     topSeverity={cloudSev}
                     topTitle={`Кромка хмар: ${pt.cloudBaseM} м`}
-                    bottomValue={`${cloudCover}%`}
+                    bottomValue={cloudCover}
                     bottomSeverity={coverSev}
                     bottomTitle={`Хмарність: ${cloudCover}%`}
                     isExpanded={isExpanded}
@@ -477,7 +463,7 @@ const ForecastGrid: React.FC<ForecastGridProps> = ({
 
           {/* ---------------- Рядок 6: Опади / Вологість (Діагональний спліт + Крива опадів) ---------------- */}
           <div
-            className={`relative flex border-b border-slate-700/60 ${
+            className={`relative flex border-b border-slate-300 dark:border-slate-700/60 ${
               isExpanded ? 'h-12' : 'h-10'
             }`}
           >
@@ -489,8 +475,8 @@ const ForecastGrid: React.FC<ForecastGridProps> = ({
             >
               <defs>
                 <linearGradient id="precipAreaGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#38bdf8" stopOpacity="0.3" />
-                  <stop offset="100%" stopColor="#38bdf8" stopOpacity="0.0" />
+                  <stop offset="0%" stopColor="#0284c7" stopOpacity="0.35" />
+                  <stop offset="100%" stopColor="#0284c7" stopOpacity="0.0" />
                 </linearGradient>
               </defs>
 
@@ -501,11 +487,11 @@ const ForecastGrid: React.FC<ForecastGridProps> = ({
                   <path
                     d={precipSpline.path}
                     fill="none"
-                    stroke="#38bdf8"
-                    strokeWidth="1.8"
+                    stroke="#0284c7"
+                    strokeWidth={isExpanded ? 1.5 : 1.2}
                     strokeLinecap="round"
                     strokeDasharray={points.every((p) => p.precipMm === 0) ? '2 2' : 'none'}
-                    className="drop-shadow-[0_0_3px_rgba(56,189,248,0.7)] opacity-85"
+                    className="dark:stroke-[#38bdf8] drop-shadow-[0_0_2px_rgba(56,189,248,0.7)] opacity-90"
                   />
                 </>
               )}
@@ -519,13 +505,13 @@ const ForecastGrid: React.FC<ForecastGridProps> = ({
                 <div
                   key={`precip-hum-${pt.timestamp}`}
                   style={{ width: `${colWidth}px` }}
-                  className="p-0.5 border-r border-slate-800/80 z-0"
+                  className="p-0.5 border-r border-slate-200 dark:border-slate-800/80 z-0"
                 >
                   <DiagonalSplitCell
                     topValue={pt.precipMm > 0 ? pt.precipMm.toFixed(1) : '—'}
                     topSeverity={precipSev}
                     topTitle={`Опади: ${pt.precipMm > 0 ? `${pt.precipMm.toFixed(1)} мм/год` : 'немає'}`}
-                    bottomValue={`${pt.humidity}%`}
+                    bottomValue={pt.humidity}
                     bottomSeverity={humSev}
                     bottomTitle={`Вологість: ${pt.humidity}%`}
                     isExpanded={isExpanded}
@@ -537,7 +523,7 @@ const ForecastGrid: React.FC<ForecastGridProps> = ({
 
           {/* ---------------- Рядок 7: Видимість / Туман (Діагональний спліт) ---------------- */}
           <div
-            className={`flex border-b border-slate-700/60 ${isExpanded ? 'h-12' : 'h-10'}`}
+            className={`flex border-b border-slate-300 dark:border-slate-700/60 ${isExpanded ? 'h-12' : 'h-10'}`}
           >
             {points.map((pt) => {
               const fogSev = evaluateFog(pt.fogRisk, pt.visibilityKm, warnings.fog, warnings.visibility)
@@ -547,7 +533,7 @@ const ForecastGrid: React.FC<ForecastGridProps> = ({
                 <div
                   key={`vis-fog-${pt.timestamp}`}
                   style={{ width: `${colWidth}px` }}
-                  className="p-0.5 border-r border-slate-800/80"
+                  className="p-0.5 border-r border-slate-200 dark:border-slate-800/80"
                 >
                   <DiagonalSplitCell
                     topValue={pt.visibilityKm.toFixed(1)}
@@ -565,20 +551,20 @@ const ForecastGrid: React.FC<ForecastGridProps> = ({
 
           {/* ---------------- Рядок 8: КР-індекс ---------------- */}
           <div
-            className={`flex bg-slate-950/40 ${isExpanded ? 'h-10' : 'h-8'}`}
+            className={`flex bg-slate-50/40 dark:bg-slate-950/40 ${isExpanded ? 'h-10' : 'h-8'}`}
           >
             {points.map((pt) => {
               const kpSev = evaluateKpIndex(pt.kpIndex)
               const bgClass =
                 kpSev === 'warning'
-                  ? 'bg-amber-900/50 text-amber-300 font-bold'
-                  : 'bg-emerald-950/25 text-emerald-400 font-semibold'
+                  ? 'bg-amber-100 text-amber-900 dark:bg-amber-900/50 dark:text-amber-300 font-bold'
+                  : 'bg-emerald-50/80 text-emerald-900 dark:bg-emerald-950/25 dark:text-emerald-400 font-semibold'
 
               return (
                 <div
                   key={`kp-${pt.timestamp}`}
                   style={{ width: `${colWidth}px` }}
-                  className={`flex items-center justify-center border-r border-slate-800/80 transition-colors ${bgClass}`}
+                  className={`flex items-center justify-center border-r border-slate-200 dark:border-slate-800/80 transition-colors ${bgClass}`}
                   title={`КР-індекс: ${pt.kpIndex} (${kpSev === 'warning' ? 'геомагнітне збурення' : 'спокійно'})`}
                 >
                   <span className={isExpanded ? 'text-xs' : 'text-[10px]'}>
@@ -702,7 +688,7 @@ export const ShortTermCard: React.FC<ShortTermCardProps> = ({
       onClick={() => setIsModalOpen(true)}
       title="Розгорнути прогноз на весь екран"
       aria-label="Розгорнути прогноз на весь екран"
-      className="flex items-center gap-1 px-2 py-1 rounded-md text-xs text-slate-400 hover:text-slate-100 hover:bg-slate-700/60 transition-colors border border-transparent hover:border-slate-600"
+      className="flex items-center gap-1 px-2 py-1 rounded-md text-xs text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-700/60 transition-colors border border-transparent hover:border-slate-300 dark:hover:border-slate-600"
     >
       <Maximize2 className="w-3.5 h-3.5" />
       <span className="hidden sm:inline text-[11px]">Розгорнути</span>
@@ -717,6 +703,7 @@ export const ShortTermCard: React.FC<ShortTermCardProps> = ({
         criticalNotice={criticalNotice}
         headerAction={expandAction}
         updatedText={null}
+        className="self-start w-full"
       >
         <div className="flex-1 flex flex-col min-h-0 w-full overflow-hidden mt-1">
           <ForecastGrid
@@ -733,7 +720,7 @@ export const ShortTermCard: React.FC<ShortTermCardProps> = ({
         <div
           role="dialog"
           aria-modal="true"
-          className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 md:p-6 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200"
+          className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 md:p-6 bg-black/75 backdrop-blur-sm animate-in fade-in duration-200"
         >
           {/* Фон клік для закриття */}
           <div
@@ -741,16 +728,16 @@ export const ShortTermCard: React.FC<ShortTermCardProps> = ({
             onClick={() => setIsModalOpen(false)}
           />
 
-          <div className="relative w-full max-w-7xl max-h-[92vh] bg-slate-900 border border-slate-700/80 rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
+          <div className="relative w-full max-w-7xl max-h-[92vh] bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700/80 rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
             {/* Шапка модального вікна */}
-            <div className="flex items-center justify-between px-4 sm:px-6 py-3.5 border-b border-slate-800 bg-slate-900/90 shrink-0">
+            <div className="flex items-center justify-between px-4 sm:px-6 py-3.5 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/90 shrink-0">
               <div className="flex items-center gap-2.5">
-                <CloudLightning className="w-5 h-5 text-emerald-400" />
+                <CloudLightning className="w-5 h-5 text-emerald-500" />
                 <div>
-                  <h3 className="text-base sm:text-lg font-bold text-slate-100">
+                  <h3 className="text-base sm:text-lg font-bold text-slate-900 dark:text-slate-100">
                     Погодинний прогноз на найближчий час
                   </h3>
-                  <p className="text-xs text-slate-400">
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
                     Горизонтальний трек: {filteredPoints.length} інтервалів (крок {detailHours} год, глибина {depthHours} год)
                   </p>
                 </div>
@@ -761,7 +748,7 @@ export const ShortTermCard: React.FC<ShortTermCardProps> = ({
                 onClick={() => setIsModalOpen(false)}
                 title="Закрити вікно (Esc)"
                 aria-label="Закрити вікно"
-                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-100 hover:bg-slate-800 transition-colors border border-slate-700/60"
+                className="p-1.5 rounded-lg text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors border border-slate-300 dark:border-slate-700/60"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -780,7 +767,7 @@ export const ShortTermCard: React.FC<ShortTermCardProps> = ({
 
               {/* Критичні фактори в модальному вікні */}
               {criticalNotice && (
-                <div className="mt-4 px-3 py-2 rounded-lg bg-rose-950/40 border border-rose-800/40 text-rose-300 text-xs flex items-center gap-2 shrink-0">
+                <div className="mt-4 px-3 py-2 rounded-lg bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800/40 text-rose-800 dark:text-rose-300 text-xs flex items-center gap-2 shrink-0">
                   <span className="text-base">⚠️</span>
                   <span>{criticalNotice}</span>
                 </div>
