@@ -119,16 +119,8 @@ const TwelveHourClockDial: React.FC<{
   const rOuter = 92
   const rLabels = 106
 
-  // Підрахунок сприятливих секторів
-  const safeCount = sectors.filter(
-    (s) => s.status === 'ideal' || s.status === 'favorable'
-  ).length
-  const activeCount = sectors.filter(
-    (s) => s.status !== 'past' && s.status !== 'no_data'
-  ).length
-
   return (
-    <div className="flex flex-col items-center w-full max-w-[270px] p-2.5 sm:p-3 rounded-2xl bg-slate-50/60 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 shadow-xs select-none transition-all">
+    <div className="flex flex-col items-center w-full max-w-[270px] p-2.5 sm:p-3 rounded-2xl bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 shadow-xs select-none transition-all">
       {/* Заголовок циферблата */}
       <div className="flex flex-col items-center mb-1 text-center">
         <span className="text-xs font-bold text-slate-800 dark:text-slate-100 tracking-tight">
@@ -218,15 +210,17 @@ const TwelveHourClockDial: React.FC<{
 
         {/* Інтерактивний центр циферблату */}
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-          <div className="w-[110px] h-[110px] rounded-full flex flex-col items-center justify-center p-1 text-center">
+          <div className="w-[110px] h-[110px] rounded-full flex flex-col items-center justify-center p-1 text-center select-none">
             {hoveredSector ? (
-              <div className="flex flex-col items-center justify-center animate-in fade-in zoom-in-90 duration-150">
-                <span className="font-mono font-extrabold text-xs sm:text-sm text-slate-800 dark:text-slate-100 leading-tight">
+              <div className="flex flex-col items-center justify-center animate-in fade-in zoom-in-90 duration-150 max-w-[104px]">
+                {/* Час */}
+                <span className="font-mono font-extrabold text-[11px] sm:text-xs text-slate-900 dark:text-slate-100 leading-tight">
                   {hoveredSector.timeRangeStr}
                 </span>
 
+                {/* Статус */}
                 {hoveredSector.status === 'past' && (
-                  <span className="text-[9.5px] font-semibold text-slate-500 dark:text-slate-400 mt-0.5">
+                  <span className="text-[9px] font-semibold text-slate-400 dark:text-slate-500 mt-0.5">
                     Минулий час
                   </span>
                 )}
@@ -261,26 +255,37 @@ const TwelveHourClockDial: React.FC<{
                   </span>
                 )}
 
-                {/* Фактор обмеження */}
-                {hoveredSector.issues.length > 0 && hoveredSector.status !== 'past' && (
-                  <span className="text-[8px] text-slate-500 dark:text-slate-400 line-clamp-2 mt-0.5 px-1 leading-tight font-medium">
-                    {hoveredSector.issues[0]}
-                  </span>
+                {/* Назва параметру, чому небезпечно */}
+                {hoveredSector.issues.length > 0 && hoveredSector.status !== 'past' ? (
+                  <div className="flex flex-col items-center justify-center mt-0.5 leading-tight">
+                    {hoveredSector.issues.slice(0, 2).map((issue, idx) => {
+                      const cleanIssue = issue.replace(/\s*\([^)]*\)/g, '').trim()
+                      return (
+                        <span
+                          key={idx}
+                          className="text-[8px] sm:text-[8.5px] font-semibold text-rose-700 dark:text-rose-300 line-clamp-1"
+                          title={issue}
+                        >
+                          {cleanIssue}
+                        </span>
+                      )
+                    })}
+                  </div>
+                ) : (
+                  (hoveredSector.status === 'ideal' || hoveredSector.status === 'favorable') && (
+                    <span className="text-[8px] font-medium text-slate-500 dark:text-slate-400 mt-0.5">
+                      Умови в нормі
+                    </span>
+                  )
                 )}
               </div>
             ) : (
-              <div className="flex flex-col items-center justify-center">
-                <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-0.5">
-                  Вікно БПЛА
+              <div className="flex flex-col items-center justify-center leading-tight">
+                <span className="text-xs sm:text-[13px] font-extrabold text-slate-800 dark:text-slate-100 tracking-tight">
+                  Вікна для
                 </span>
-                <span className="font-mono font-extrabold text-base sm:text-lg text-emerald-600 dark:text-emerald-400 leading-none">
-                  {safeCount}
-                  <span className="text-xs text-slate-400 dark:text-slate-500 font-normal ml-0.5">
-                    /{activeCount}
-                  </span>
-                </span>
-                <span className="text-[8.5px] text-slate-500 dark:text-slate-400 mt-0.5">
-                  доступних слотів
+                <span className="text-xs sm:text-[13px] font-extrabold text-slate-800 dark:text-slate-100 tracking-tight">
+                  польотів
                 </span>
               </div>
             )}
@@ -303,29 +308,49 @@ export const FlightWindowsCard: React.FC<FlightWindowsCardProps> = ({
   const detailHours = parseInt(detail, 10) || 1
   const maxFlightLevelM = parseInt(levels, 10) || 800
 
-  // Визначаємо дату початку прогнозу (сьогодні)
-  const todayDateStr = useMemo(() => {
-    if (hourly && hourly.length > 0) {
-      return hourly[0].fullDate
+  // Визначаємо унікальні дати з погодинного прогнозу
+  const uniqueDates = useMemo(() => {
+    if (!hourly || hourly.length === 0) return []
+    const dates: string[] = []
+    for (const p of hourly) {
+      if (p.fullDate && !dates.includes(p.fullDate)) {
+        dates.push(p.fullDate)
+      }
     }
-    return new Date().toISOString().slice(0, 10)
+    return dates
   }, [hourly])
 
-  const todayFormatted = useMemo(() => {
-    const parts = todayDateStr.split('-')
-    if (parts.length === 3) {
-      return `${parts[2]}.${parts[1]}.${parts[0]}`
-    }
-    return todayDateStr
-  }, [todayDateStr])
+  const todayDateStr = uniqueDates[0] || new Date().toISOString().slice(0, 10)
+  const tomorrowDateStr = useMemo(() => {
+    if (uniqueDates.length > 1) return uniqueDates[1]
+    const d = new Date(todayDateStr)
+    d.setDate(d.getDate() + 1)
+    return d.toISOString().slice(0, 10)
+  }, [uniqueDates, todayDateStr])
 
-  // Поточна година початку прогнозу (для сірого забарвлення минулих годин)
+  const formatShortDate = (dStr: string) => {
+    const parts = dStr.split('-')
+    if (parts.length === 3) {
+      return `${parts[2]}.${parts[1]}`
+    }
+    return dStr
+  }
+
+  const todayFormattedShort = useMemo(() => formatShortDate(todayDateStr), [todayDateStr])
+  const tomorrowFormattedShort = useMemo(() => formatShortDate(tomorrowDateStr), [tomorrowDateStr])
+
+  // Поточна година початку прогнозу (для сірого забарвлення минулих годин сьогодні)
   const firstForecastHour = useMemo(() => {
     if (hourly && hourly.length > 0) {
       return parseInt(hourly[0].time.split(':')[0], 10)
     }
     return new Date().getHours()
   }, [hourly])
+
+  // Якщо перша половина доби вже в минулому (година >= 12), не показуємо перший циферблат сьогодні
+  const isTodayAmRelevant = useMemo(() => {
+    return firstForecastHour < 12
+  }, [firstForecastHour])
 
   // Ранжування статусів небезпеки
   const severityRank: Record<DialSectorStatus, number> = {
@@ -339,7 +364,7 @@ export const FlightWindowsCard: React.FC<FlightWindowsCardProps> = ({
   }
 
   // Генерація секторів для 12-годинного блоку
-  const buildHalfDaySectors = (startBaseHour: number) => {
+  const buildHalfDaySectors = (targetDateStr: string, startBaseHour: number, isToday: boolean) => {
     const sectorCount = Math.max(1, Math.floor(12 / detailHours))
     const spanAngle = 360 / sectorCount
     const sectors: DialSectorData[] = []
@@ -355,15 +380,15 @@ export const FlightWindowsCard: React.FC<FlightWindowsCardProps> = ({
           ? `${String(segStart).padStart(2, '0')}:00`
           : `${String(segStart).padStart(2, '0')}:00 - ${String(segEnd).padStart(2, '0')}:00`
 
-      // Перевіряємо чи цей сектор повністю в минулому
-      if (segEnd <= firstForecastHour) {
+      // Перевіряємо чи цей сектор повністю в минулому (тільки для Сьогодні)
+      if (isToday && segEnd <= firstForecastHour) {
         sectors.push({
-          id: `seg-${segStart}-${segEnd}`,
+          id: `seg-${targetDateStr}-${segStart}-${segEnd}`,
           startHour: segStart,
           endHour: segEnd,
           timeRangeStr,
           status: 'past',
-          issues: ['Година вже минула'],
+          issues: ['Час вже минув'],
           startAngle,
           endAngle,
         })
@@ -372,14 +397,14 @@ export const FlightWindowsCard: React.FC<FlightWindowsCardProps> = ({
 
       // Шукаємо точки прогнозу для даного часового проміжку
       const matchingPoints = hourly.filter((p) => {
-        if (p.fullDate !== todayDateStr) return false
+        if (p.fullDate !== targetDateStr) return false
         const h = parseInt(p.time.split(':')[0], 10)
         return h >= segStart && h < segEnd
       })
 
       if (matchingPoints.length === 0) {
         sectors.push({
-          id: `seg-${segStart}-${segEnd}`,
+          id: `seg-${targetDateStr}-${segStart}-${segEnd}`,
           startHour: segStart,
           endHour: segEnd,
           timeRangeStr,
@@ -415,7 +440,7 @@ export const FlightWindowsCard: React.FC<FlightWindowsCardProps> = ({
       }
 
       sectors.push({
-        id: `seg-${segStart}-${segEnd}`,
+        id: `seg-${targetDateStr}-${segStart}-${segEnd}`,
         startHour: segStart,
         endHour: segEnd,
         timeRangeStr,
@@ -429,15 +454,23 @@ export const FlightWindowsCard: React.FC<FlightWindowsCardProps> = ({
     return sectors
   }
 
-  // Перша половина дня (00:00 - 12:00)
-  const amSectors = useMemo(() => {
-    return buildHalfDaySectors(0)
+  // Сьогодні: Ніч/Ранок (00:00 - 12:00) та День/Вечір (12:00 - 24:00)
+  const todayAmSectors = useMemo(() => {
+    return buildHalfDaySectors(todayDateStr, 0, true)
   }, [hourly, todayDateStr, firstForecastHour, detailHours, warnings, maxFlightLevelM])
 
-  // Друга половина дня (12:00 - 24:00)
-  const pmSectors = useMemo(() => {
-    return buildHalfDaySectors(12)
+  const todayPmSectors = useMemo(() => {
+    return buildHalfDaySectors(todayDateStr, 12, true)
   }, [hourly, todayDateStr, firstForecastHour, detailHours, warnings, maxFlightLevelM])
+
+  // Завтра: Ніч/Ранок (00:00 - 12:00) та День/Вечір (12:00 - 24:00)
+  const tomorrowAmSectors = useMemo(() => {
+    return buildHalfDaySectors(tomorrowDateStr, 0, false)
+  }, [hourly, tomorrowDateStr, firstForecastHour, detailHours, warnings, maxFlightLevelM])
+
+  const tomorrowPmSectors = useMemo(() => {
+    return buildHalfDaySectors(tomorrowDateStr, 12, false)
+  }, [hourly, tomorrowDateStr, firstForecastHour, detailHours, warnings, maxFlightLevelM])
 
   // Номери годин для класичного циферблата
   const amHourNumbers = ['12', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11']
@@ -459,21 +492,57 @@ export const FlightWindowsCard: React.FC<FlightWindowsCardProps> = ({
       icon={Activity}
       className={`w-full ${className}`}
     >
-      <div className="w-full flex flex-col justify-between flex-1 min-h-0">
-        {/* Два 12-годинних циферблати на Сьогодні: 00-12 та 12-24 */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-5 w-full items-center justify-items-center py-1">
-          <TwelveHourClockDial
-            title="Сьогодні: 00:00 – 12:00"
-            subtitle={`${todayFormatted} (Ніч / Ранок)`}
-            sectors={amSectors}
-            hourNumbers={amHourNumbers}
-          />
-          <TwelveHourClockDial
-            title="Сьогодні: 12:00 – 24:00"
-            subtitle={`${todayFormatted} (День / Вечір)`}
-            sectors={pmSectors}
-            hourNumbers={pmHourNumbers}
-          />
+      <div className="w-full flex flex-col justify-between flex-1 min-h-0 gap-4">
+        {/* ================= КОНТЕЙНЕР 1: СЬОГОДНІ ================= */}
+        <div className="w-full flex flex-col p-3 sm:p-3.5 rounded-2xl bg-slate-50/70 dark:bg-slate-900/40 border border-slate-200/90 dark:border-slate-800/90 shadow-xs">
+          <div className="flex items-center gap-2 mb-2.5 px-1">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 shadow-xs" />
+            <h4 className="text-xs sm:text-sm font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200">
+              Сьогодні
+            </h4>
+          </div>
+
+          <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-4 w-full">
+            {isTodayAmRelevant && (
+              <TwelveHourClockDial
+                title={`${todayFormattedShort} (Ніч / Ранок)`}
+                subtitle="00:00 – 12:00"
+                sectors={todayAmSectors}
+                hourNumbers={amHourNumbers}
+              />
+            )}
+            <TwelveHourClockDial
+              title={`${todayFormattedShort} (День / Вечір)`}
+              subtitle="12:00 – 24:00"
+              sectors={todayPmSectors}
+              hourNumbers={pmHourNumbers}
+            />
+          </div>
+        </div>
+
+        {/* ================= КОНТЕЙНЕР 2: ЗАВТРА ================= */}
+        <div className="w-full flex flex-col p-3 sm:p-3.5 rounded-2xl bg-slate-50/70 dark:bg-slate-900/40 border border-slate-200/90 dark:border-slate-800/90 shadow-xs">
+          <div className="flex items-center gap-2 mb-2.5 px-1">
+            <span className="w-2 h-2 rounded-full bg-indigo-500 shadow-xs" />
+            <h4 className="text-xs sm:text-sm font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200">
+              Завтра
+            </h4>
+          </div>
+
+          <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-4 w-full">
+            <TwelveHourClockDial
+              title={`${tomorrowFormattedShort} (Ніч / Ранок)`}
+              subtitle="00:00 – 12:00"
+              sectors={tomorrowAmSectors}
+              hourNumbers={amHourNumbers}
+            />
+            <TwelveHourClockDial
+              title={`${tomorrowFormattedShort} (День / Вечір)`}
+              subtitle="12:00 – 24:00"
+              sectors={tomorrowPmSectors}
+              hourNumbers={pmHourNumbers}
+            />
+          </div>
         </div>
 
         {/* 
@@ -481,7 +550,7 @@ export const FlightWindowsCard: React.FC<FlightWindowsCardProps> = ({
           - В один рядок над треком: розшифровка кольорів (без лінії розділення)
           - Знизу: підпис треку
         */}
-        <div className="flex flex-col items-start gap-1.5 mt-2.5 pt-1 shrink-0">
+        <div className="flex flex-col items-start gap-1.5 pt-1 shrink-0">
           {/* Розшифровка кольорів попереджень в один рядок */}
           <div className="flex flex-wrap items-center gap-2 sm:gap-2.5 text-[9.5px] sm:text-[10px] font-semibold">
             <span className="flex items-center gap-1" title="Час від початку доби до поточного прогнозу">
