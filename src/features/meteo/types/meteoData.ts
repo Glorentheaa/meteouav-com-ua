@@ -31,7 +31,13 @@ export interface HourlyForecastPoint {
   levels: Record<AltitudeLevel, AltitudeWindData>
 }
 
-export type WarningSeverity = 'safe' | 'warning' | 'danger'
+export type WarningSeverity =
+  | 'ideal'      // Зелений як в логотипі - ідеальні умови
+  | 'favorable'  // Зелений темний - сприятливі умови
+  | 'attention'  // Жовтий - потрібно звернути увагу
+  | 'warning'    // Помаранчевий - наближення до критичних показників
+  | 'danger'     // Червоний - перевищення критичних показників
+  | 'safe'       // Сумісність (еквівалент ideal)
 
 export interface HourEvaluation {
   severity: WarningSeverity

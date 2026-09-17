@@ -1,15 +1,16 @@
 import React, { useState } from 'react'
-import { RefreshCw, Loader2, CheckCircle2, AlertCircle } from 'lucide-react'
+import { RefreshCw, Loader2, CheckCircle2, AlertCircle, Radar, MapPin } from 'lucide-react'
 
 // Hooks & utils
 import { useAuth } from '../context/useAuth'
 import { useMeteoSettings } from '../features/meteo/hooks/useMeteoSettings'
 import { useMeteoBlocks } from '../features/meteo/hooks/useMeteoBlocks'
 import { getUaTime, getForecastDatesText } from '../utils/dateUtils'
-import { getActiveLocation, setActiveLocation } from '../features/meteo/utils/geoUtils'
+import { setActiveLocation } from '../features/meteo/utils/geoUtils'
 import type { SavedLocation } from '../features/meteo/types/location'
 import type { FullMeteoForecastResponse } from '../features/meteo/types/meteoData'
-import { buildMeteoPayload, sendMeteoRequest, getCachedForecast } from '../services/meteoService'
+import type { ForecastDepth, ForecastDetail, FlightLevels, MeteoWarnings } from '../features/meteo/types/meteo'
+import { buildMeteoPayload, sendMeteoRequest } from '../services/meteoService'
 import { generateMockForecast } from '../features/meteo/utils/mockMeteoData'
 
 // Components
@@ -25,6 +26,19 @@ import { FlightWindowsCard } from '../features/meteo/components/cards/FlightWind
 import { MeteorologistCard } from '../features/meteo/components/cards/MeteorologistCard'
 import { WeeklyForecastCard } from '../features/meteo/components/cards/WeeklyForecastCard'
 import { SunMoonCard } from '../features/meteo/components/cards/SunMoonCard'
+
+const APPLIED_STATE_STORAGE_KEY = 'meteo_applied_state_v3'
+
+interface AppliedForecastState {
+  location: SavedLocation
+  forecastData: FullMeteoForecastResponse
+  depth: ForecastDepth
+  detail: ForecastDetail
+  levels: FlightLevels
+  warnings: MeteoWarnings
+  lastUpdated: string
+  forecastDates: string
+}
 
 export const MeteoApp: React.FC = () => {
   const { user, isPro } = useAuth()
@@ -58,11 +72,29 @@ export const MeteoApp: React.FC = () => {
     hasGrid2Cards,
   } = useMeteoBlocks()
 
-  const [currentLocation, setCurrentLocation] = useState<SavedLocation>(() => getActiveLocation())
-  const [forecastData, setForecastData] = useState<FullMeteoForecastResponse>(() => {
-    const cached = getCachedForecast(currentLocation.sectorId)
-    if (cached) return cached
-    return generateMockForecast(currentLocation.sectorId, currentLocation.name)
+  // Збережений застосований стан блоків (відновлюється після перезавантаження F5)
+  const [appliedForecast, setAppliedForecast] = useState<AppliedForecastState | null>(() => {
+    try {
+      const saved = localStorage.getItem(APPLIED_STATE_STORAGE_KEY)
+      if (saved) {
+        return JSON.parse(saved)
+      }
+    } catch (e) {
+      console.error('Помилка читання збереженого прогнозу:', e)
+    }
+    return null
+  })
+
+  // Поточний вибір у селекторі локацій (якщо прогноз вже збережено — беремо збережену локацію, інакше null для першого заходу)
+  const [selectedLocation, setSelectedLocation] = useState<SavedLocation | null>(() => {
+    try {
+      const saved = localStorage.getItem(APPLIED_STATE_STORAGE_KEY)
+      if (saved) {
+        const parsed = JSON.parse(saved)
+        if (parsed?.location) return parsed.location
+      }
+    } catch {}
+    return null
   })
 
   const [isRefreshing, setIsRefreshing] = useState(false)
@@ -71,17 +103,44 @@ export const MeteoApp: React.FC = () => {
     message: string
   } | null>(null)
 
-  const [lastUpdated, setLastUpdated] = useState(getUaTime)
   const [autoUpdated] = useState(getUaTime)
-  const [forecastDates, setForecastDates] = useState(getForecastDatesText)
 
+  // Обробник збереження налаштувань у висувній панелі
+  const handleDrawerSave = () => {
+    handleSave()
+    setStatusFeedback({
+      type: 'success',
+      message: 'Параметри збережено. Натисніть «Оновити прогноз», щоб застосувати зміни до карток.',
+    })
+    setTimeout(() => setStatusFeedback(null), 6000)
+  }
+
+  const handleDrawerFactoryReset = () => {
+    handleFactoryReset()
+    setStatusFeedback({
+      type: 'success',
+      message: 'Параметри скинуто. Натисніть «Оновити прогноз», щоб застосувати зміни.',
+    })
+    setTimeout(() => setStatusFeedback(null), 6000)
+  }
+
+  // Обробник натискання кнопки "Оновити прогноз"
   const handleRefresh = async () => {
+    if (!selectedLocation) {
+      setStatusFeedback({
+        type: 'error',
+        message: 'Для початку роботи оберіть локацію зі списку або введіть координати!',
+      })
+      setTimeout(() => setStatusFeedback(null), 5000)
+      return
+    }
+
     setIsRefreshing(true)
     setStatusFeedback(null)
 
-    // Формуємо повне корисне навантаження для n8n
+    // Формуємо корисне навантаження на базі збережених/активних параметрів користувача
     const payload = buildMeteoPayload({
-      location: currentLocation,
+      location: selectedLocation,
       depth,
       detail,
       levels,
@@ -97,20 +156,48 @@ export const MeteoApp: React.FC = () => {
 
     try {
       const res = await sendMeteoRequest(payload)
-      if (res.data) {
-        setForecastData(res.data)
+      const data = res.data || generateMockForecast(selectedLocation.sectorId, selectedLocation.name)
+
+      const newAppliedState: AppliedForecastState = {
+        location: selectedLocation,
+        forecastData: data,
+        depth,
+        detail,
+        levels,
+        warnings,
+        lastUpdated: getUaTime(),
+        forecastDates: getForecastDatesText(),
       }
-      setLastUpdated(getUaTime())
-      setForecastDates(getForecastDatesText())
+
+      setAppliedForecast(newAppliedState)
+      localStorage.setItem(APPLIED_STATE_STORAGE_KEY, JSON.stringify(newAppliedState))
+      setActiveLocation(selectedLocation)
+
       setStatusFeedback({
         type: res.success ? 'success' : 'error',
-        message: res.message,
+        message: res.message || 'Прогноз успішно оновлено',
       })
     } catch (e) {
       console.error('Помилка оновлення прогнозу:', e)
+      // Автономний фолбек на мок-дані для безперервної роботи
+      const fallbackData = generateMockForecast(selectedLocation.sectorId, selectedLocation.name)
+      const fallbackAppliedState: AppliedForecastState = {
+        location: selectedLocation,
+        forecastData: fallbackData,
+        depth,
+        detail,
+        levels,
+        warnings,
+        lastUpdated: getUaTime(),
+        forecastDates: getForecastDatesText(),
+      }
+      setAppliedForecast(fallbackAppliedState)
+      localStorage.setItem(APPLIED_STATE_STORAGE_KEY, JSON.stringify(fallbackAppliedState))
+      setActiveLocation(selectedLocation)
+
       setStatusFeedback({
         type: 'error',
-        message: 'Помилка надсилання запиту до погодного сервісу',
+        message: 'Не вдалося зв’язатися з погодним сервером. Завантажено резервні тактичні дані.',
       })
     } finally {
       setIsRefreshing(false)
@@ -157,12 +244,9 @@ export const MeteoApp: React.FC = () => {
           <div className="p-4 sm:p-5 grid grid-cols-1 lg:grid-cols-3 gap-5 items-end">
             {/* Локація */}
             <LocationSelector
-              currentLocation={currentLocation}
+              currentLocation={selectedLocation}
               onSelectLocation={(loc) => {
-                setCurrentLocation(loc)
-                setActiveLocation(loc)
-                const cached = getCachedForecast(loc.sectorId)
-                setForecastData(cached || generateMockForecast(loc.sectorId, loc.name))
+                setSelectedLocation(loc)
               }}
             />
 
@@ -170,7 +254,7 @@ export const MeteoApp: React.FC = () => {
             <div className="w-full h-full flex items-center lg:px-2">
               <div className="text-[10px] text-slate-500 dark:text-slate-400 leading-tight">
                 <p>
-                  Будь який прогноз погоди оновлюється 1 раз на 3 години. Для отримання свіжої інформації враховуйте розклад оновлень: 00:00, 03:00, 06:00, 09:00, 12:00, 15:00, 18:00, 21:00. Не забувайте тиснути "Оновити прогноз погоди" для отримання свіжої інформації!
+                  Будь який прогноз погоди оновлюється 1 раз на 3 години. Для отримання свіжої інформації враховуйте розклад оновлень: 00:00, 03:00, 06:00, 09:00, 12:00, 15:00, 18:00, 21:00. Не забувайте тиснути "Оновити прогноз" для отримання актуальної інформації!
                 </p>
                 <p className="mt-1 italic">
                   *Прогноз на тиждень оновлюється автоматично раз на 48 годин.
@@ -209,7 +293,7 @@ export const MeteoApp: React.FC = () => {
                   type="button"
                   onClick={handleRefresh}
                   disabled={isRefreshing}
-                  className="px-6 py-2.5 text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg transition-colors shadow-sm flex items-center justify-center gap-2 w-full h-[42px] disabled:opacity-75 disabled:cursor-not-allowed"
+                  className="px-6 py-2.5 text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg transition-colors shadow-sm flex items-center justify-center gap-2 w-full h-[42px] disabled:opacity-75 disabled:cursor-not-allowed cursor-pointer"
                 >
                   {isRefreshing ? (
                     <>
@@ -240,82 +324,129 @@ export const MeteoApp: React.FC = () => {
               updateWarning={updateWarning}
               showWarnings={showWarnings}
               setShowWarnings={setShowWarnings}
-              onFactoryReset={handleFactoryReset}
-              onSave={handleSave}
+              onFactoryReset={handleDrawerFactoryReset}
+              onSave={handleDrawerSave}
             />
           )}
         </div>
       </header>
 
-      {/* Розділювач та Дата (Грід 1) */}
-      {hasGrid1Cards && (
+      {/* Якщо стан прогнозу ще не сформований — показуємо стильну заглушку першого входу */}
+      {!appliedForecast ? (
+        <div className="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-2xl p-8 sm:p-12 shadow-sm flex flex-col items-center justify-center text-center animate-in fade-in zoom-in-95 duration-300 my-2">
+          <div className="w-16 h-16 rounded-2xl bg-emerald-500/10 dark:bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center mb-4 text-emerald-600 dark:text-emerald-400 shadow-inner">
+            <Radar className="w-8 h-8 animate-pulse" />
+          </div>
+          <h3 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-slate-100 mb-2">
+            Тактичний метеопрогноз MeteoUAV готовий до формування
+          </h3>
+          <p className="text-sm text-slate-600 dark:text-slate-400 max-w-lg mb-6 leading-relaxed">
+            Для початку роботи оберіть вашу локацію у спадному меню вище та натисніть кнопку{' '}
+            <span className="font-bold text-emerald-600 dark:text-emerald-400">«Оновити прогноз»</span>.
+            Погодні дані та обрані параметри будуть зафіксовані та зберігатимуться між сесіями.
+          </p>
+          <div className="flex flex-wrap items-center justify-center gap-3">
+            <div className="px-4 py-2 rounded-lg bg-slate-100 dark:bg-slate-700/60 border border-slate-200 dark:border-slate-600 text-xs font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-2">
+              <MapPin className="w-4 h-4 text-emerald-500" />
+              <span>1. Оберіть локацію або введіть координати</span>
+            </div>
+            <div className="px-4 py-2 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-500/30 text-xs font-semibold text-emerald-700 dark:text-emerald-400 flex items-center gap-2">
+              <RefreshCw className="w-4 h-4 text-emerald-500" />
+              <span>2. Натисніть «Оновити прогноз»</span>
+            </div>
+          </div>
+        </div>
+      ) : (
         <>
-          <SectionDivider
-            isOpen={showGrid1}
-            onToggle={() => setShowGrid1(!showGrid1)}
-            label={`Деталізований прогноз погоди для сектора ${currentLocation.sectorId} (${currentLocation.name}) на ${forecastDates}. Останнє оновлення ${lastUpdated}`}
-          />
+          {/* Розділювач та Дата (Грід 1) */}
+          {hasGrid1Cards && (
+            <>
+              <SectionDivider
+                isOpen={showGrid1}
+                onToggle={() => setShowGrid1(!showGrid1)}
+                label={`Деталізований прогноз погоди для сектора ${appliedForecast.location.sectorId} (${appliedForecast.location.name}) на ${appliedForecast.forecastDates}. Останнє оновлення ${appliedForecast.lastUpdated}`}
+              />
 
-          {showGrid1 && (
-            <section className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 animate-in fade-in slide-in-from-top-2 duration-300">
-              {blocks.shortTerm && (
-                <ShortTermCard
-                  hourly={forecastData?.hourly}
-                  warnings={warnings}
-                  depth={depth}
-                  detail={detail}
-                  levels={levels}
-                />
+              {/* 
+                Нова розмітка першого контейнера з 4 блоками (Вимога 3):
+                - Два вертикальних контейнери (лівий і правий).
+                - Лівий контейнер: Прогноз на найближчий час + Вікна для польотів.
+                - Правий контейнер: Вітер по ешелонах + Висновки метеоролога.
+                - При звуженні сторінки правий контейнер автоматично стає під лівий.
+                - Блоки не обмежені по висоті, займають висоту згідно внутрішнього контенту.
+              */}
+              {showGrid1 && (
+                <section className="flex flex-col lg:flex-row gap-4 sm:gap-6 items-start w-full animate-in fade-in slide-in-from-top-2 duration-300">
+                  {/* Лівий вертикальний контейнер (Прогноз + Вікна) */}
+                  <div className="flex flex-col gap-4 sm:gap-6 w-full lg:w-1/2 min-w-0 items-start">
+                    {blocks.shortTerm && (
+                      <ShortTermCard
+                        hourly={appliedForecast.forecastData?.hourly}
+                        warnings={appliedForecast.warnings}
+                        depth={appliedForecast.depth}
+                        detail={appliedForecast.detail}
+                        levels={appliedForecast.levels}
+                      />
+                    )}
+                    {blocks.windows && (
+                      <FlightWindowsCard
+                        hourly={appliedForecast.forecastData?.hourly}
+                        warnings={appliedForecast.warnings}
+                        levels={appliedForecast.levels}
+                        depth={appliedForecast.depth}
+                        detail={appliedForecast.detail}
+                      />
+                    )}
+                  </div>
+
+                  {/* Правий вертикальний контейнер (Вітер + Висновки) */}
+                  <div className="flex flex-col gap-4 sm:gap-6 w-full lg:w-1/2 min-w-0 items-start">
+                    {blocks.wind && (
+                      <WindAltitudeCard
+                        hourly={appliedForecast.forecastData?.hourly}
+                        warnings={appliedForecast.warnings}
+                        levels={appliedForecast.levels}
+                        depth={appliedForecast.depth}
+                        detail={appliedForecast.detail}
+                      />
+                    )}
+                    {blocks.conclusion && (
+                      <MeteorologistCard aiSummary={appliedForecast.forecastData?.aiSummary} />
+                    )}
+                  </div>
+                </section>
               )}
-              {blocks.wind && (
-                <WindAltitudeCard
-                  hourly={forecastData?.hourly}
-                  warnings={warnings}
-                  levels={levels}
-                  depth={depth}
-                  detail={detail}
-                />
-              )}
-              {blocks.windows && (
-                <FlightWindowsCard
-                  hourly={forecastData?.hourly}
-                  warnings={warnings}
-                  levels={levels}
-                />
-              )}
-              {blocks.conclusion && (
-                <MeteorologistCard aiSummary={forecastData?.aiSummary} />
-              )}
-            </section>
+            </>
           )}
-        </>
-      )}
 
-      {/* Блок з тижневим прогнозом та сонцем/місяцем (Грід 2) */}
-      {hasGrid2Cards && (
-        <>
-          <SectionDivider
-            isOpen={showGrid2}
-            onToggle={() => setShowGrid2(!showGrid2)}
-            label={`Загальні параметри прогнозу з автоматичним оновленням. Останнє оновлення ${autoUpdated}`}
-            className="mt-4 mb-2"
-          />
+          {/* Блок з тижневим прогнозом та сонцем/місяцем (Грід 2) */}
+          {hasGrid2Cards && (
+            <>
+              <SectionDivider
+                isOpen={showGrid2}
+                onToggle={() => setShowGrid2(!showGrid2)}
+                label={`Загальні параметри прогнозу з автоматичним оновленням. Останнє оновлення ${autoUpdated}`}
+                className="mt-4 mb-2"
+              />
 
-          {showGrid2 && (
-            <section className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 animate-in fade-in slide-in-from-top-2 duration-300">
-              {blocks.weekly && (
-                <WeeklyForecastCard
-                  isSunMoonVisible={blocks.sunMoon}
-                  chartUrl={forecastData?.weeklyChartUrl}
-                />
+              {showGrid2 && (
+                <section className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 items-start animate-in fade-in slide-in-from-top-2 duration-300">
+                  {blocks.weekly && (
+                    <WeeklyForecastCard
+                      isSunMoonVisible={blocks.sunMoon}
+                      chartUrl={appliedForecast.forecastData?.weeklyChartUrl}
+                      hourly={appliedForecast.forecastData?.hourly}
+                    />
+                  )}
+                  {blocks.sunMoon && (
+                    <SunMoonCard
+                      isWeeklyVisible={blocks.weekly}
+                      astronomy={appliedForecast.forecastData?.astronomy}
+                    />
+                  )}
+                </section>
               )}
-              {blocks.sunMoon && (
-                <SunMoonCard
-                  isWeeklyVisible={blocks.weekly}
-                  astronomy={forecastData?.astronomy}
-                />
-              )}
-            </section>
+            </>
           )}
         </>
       )}

@@ -29,6 +29,7 @@ import {
   evaluateFog,
   evaluateKpIndex,
   evaluateCloudBase,
+  getSeverityCellClass,
 } from '../../utils/warningEvaluator'
 
 interface ShortTermCardProps {
@@ -437,12 +438,7 @@ const ForecastGrid: React.FC<ForecastGridProps> = ({
             {/* Колонки температури з індивідуальними фоновими статусами безпеки */}
             {points.map((pt) => {
               const tempSev = evaluateTemp(pt.temp, warnings.minTemp, warnings.maxTemp)
-              let bgClass = 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950/20 dark:text-emerald-300'
-              if (tempSev === 'danger') {
-                bgClass = 'bg-rose-100 text-rose-800 dark:bg-rose-900/50 dark:text-rose-300 font-bold'
-              } else if (tempSev === 'warning') {
-                bgClass = 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 font-semibold'
-              }
+              const bgClass = getSeverityCellClass(tempSev)
 
               const roundedTemp = Math.round(pt.temp)
               const tempStr = roundedTemp > 0 ? `+${roundedTemp}` : `${roundedTemp}`
@@ -529,7 +525,7 @@ const ForecastGrid: React.FC<ForecastGridProps> = ({
             {points.map((pt) => {
               const cloudSev = evaluateCloudBase(pt.cloudBaseM, maxFlightLevelM)
               const cloudCover = pt.cloudCoverPct ?? (pt.cloudBaseM < 800 ? 80 : 35)
-              const coverSev = cloudCover >= 80 ? 'warning' : 'safe'
+              const coverSev = cloudCover >= 90 ? 'attention' : cloudCover >= 60 ? 'favorable' : 'ideal'
               const roundedBase = Math.round(pt.cloudBaseM)
               const roundedCover = Math.round(cloudCover)
 
@@ -652,10 +648,7 @@ const ForecastGrid: React.FC<ForecastGridProps> = ({
           >
             {points.map((pt) => {
               const kpSev = evaluateKpIndex(pt.kpIndex)
-              const bgClass =
-                kpSev === 'warning'
-                  ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300 font-bold'
-                  : 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950/25 dark:text-emerald-400 font-semibold'
+              const bgClass = getSeverityCellClass(kpSev)
 
               return (
                 <div
@@ -748,7 +741,7 @@ export const ShortTermCard: React.FC<ShortTermCardProps> = ({
         {/* Нижній рядок: трек ліворуч, кнопка "Розгорнути" праворуч */}
         <div className="flex items-center justify-between mt-2.5 pt-1 shrink-0">
           <span className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
-            Трек: крок {detailHours} год, глибина {depthHours} год
+            Трек: крок {detailHours} год, глибина {depthHours} год, базовий прогноз на 10м.
           </span>
 
           <button
@@ -787,7 +780,7 @@ export const ShortTermCard: React.FC<ShortTermCardProps> = ({
                     Погодинний прогноз на найближчий час
                   </h3>
                   <p className="text-xs text-slate-500 dark:text-slate-400">
-                    Трек: крок {detailHours} год, глибина {depthHours} год
+                    Трек: крок {detailHours} год, глибина {depthHours} год, базовий прогноз на 10м.
                   </p>
                 </div>
               </div>

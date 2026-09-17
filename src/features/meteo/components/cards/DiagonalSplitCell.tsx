@@ -22,19 +22,30 @@ function getSplitStyles(severity?: WarningSeverity) {
   switch (severity) {
     case 'danger':
       return {
-        bg: 'bg-rose-100 dark:bg-rose-900/60',
-        text: 'text-rose-800 dark:text-rose-300',
+        bg: 'bg-rose-200/90 dark:bg-rose-900/70',
+        text: 'text-rose-950 dark:text-rose-100 font-extrabold',
       }
     case 'warning':
       return {
-        bg: 'bg-amber-100 dark:bg-amber-900/60',
-        text: 'text-amber-800 dark:text-amber-300',
+        bg: 'bg-orange-200/90 dark:bg-orange-900/70',
+        text: 'text-orange-950 dark:text-orange-100 font-bold',
       }
+    case 'attention':
+      return {
+        bg: 'bg-yellow-200/90 dark:bg-yellow-900/60',
+        text: 'text-yellow-950 dark:text-yellow-100 font-semibold',
+      }
+    case 'favorable':
+      return {
+        bg: 'bg-emerald-800/20 dark:bg-emerald-950/80',
+        text: 'text-emerald-950 dark:text-emerald-200 font-medium',
+      }
+    case 'ideal':
     case 'safe':
     default:
       return {
-        bg: 'bg-emerald-100/80 dark:bg-emerald-950/50',
-        text: 'text-emerald-800 dark:text-emerald-300',
+        bg: 'bg-emerald-500/20 dark:bg-emerald-900/40',
+        text: 'text-emerald-900 dark:text-emerald-200 font-semibold',
       }
   }
 }

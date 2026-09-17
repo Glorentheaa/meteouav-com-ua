@@ -6,7 +6,7 @@ import { getStoredLocations, setActiveLocation } from '../utils/geoUtils'
 import { ManualCoordinatesModal } from './ManualCoordinatesModal'
 
 interface LocationSelectorProps {
-  currentLocation: SavedLocation
+  currentLocation: SavedLocation | null
   onSelectLocation: (location: SavedLocation) => void
 }
 
@@ -72,12 +72,20 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
           <div className="flex items-center gap-2 overflow-hidden">
             <MapPin className="w-4 h-4 text-emerald-500 shrink-0" />
             <div className="flex items-center gap-1.5 overflow-hidden text-left">
-              <span className="font-semibold text-sm text-slate-800 dark:text-slate-100 truncate">
-                {currentLocation.name}
-              </span>
-              <span className="text-[11px] font-mono text-slate-400 dark:text-slate-500 shrink-0 hidden sm:inline">
-                [{currentLocation.sectorId}]
-              </span>
+              {currentLocation ? (
+                <>
+                  <span className="font-semibold text-sm text-slate-800 dark:text-slate-100 truncate">
+                    {currentLocation.name}
+                  </span>
+                  <span className="text-[11px] font-mono text-slate-400 dark:text-slate-500 shrink-0 hidden sm:inline">
+                    [{currentLocation.sectorId}]
+                  </span>
+                </>
+              ) : (
+                <span className="font-medium text-sm text-slate-400 dark:text-slate-500 italic">
+                  Оберіть локацію
+                </span>
+              )}
             </div>
           </div>
           <ChevronDown
@@ -131,7 +139,7 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
                       type="button"
                       onClick={() => handleSelect(loc)}
                       className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs flex items-center justify-between transition-colors ${
-                        currentLocation.id === loc.id || currentLocation.sectorId === loc.sectorId
+                        currentLocation && (currentLocation.id === loc.id || currentLocation.sectorId === loc.sectorId)
                           ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 font-semibold'
                           : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
                       }`}
@@ -165,7 +173,7 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
                       type="button"
                       onClick={() => handleSelect(loc)}
                       className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs flex items-center justify-between transition-colors ${
-                        currentLocation.id === loc.id || currentLocation.sectorId === loc.sectorId
+                        currentLocation && (currentLocation.id === loc.id || currentLocation.sectorId === loc.sectorId)
                           ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 font-semibold'
                           : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
                       }`}
@@ -211,8 +219,8 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
         isOpen={isManualModalOpen}
         onClose={() => setIsManualModalOpen(false)}
         onLocationSelected={handleManualLocationSelected}
-        initialLat={currentLocation.lat}
-        initialLon={currentLocation.lon}
+        initialLat={currentLocation?.lat}
+        initialLon={currentLocation?.lon}
       />
     </>
   )
