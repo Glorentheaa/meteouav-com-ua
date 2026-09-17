@@ -58,6 +58,18 @@ export function generateMockForecast(
       ? Math.floor(400 + Math.random() * 250)
       : Math.floor(850 + Math.random() * 500)
 
+    // Загальна хмарність (%)
+    let cloudCoverPct = 25
+    if (hasRain) {
+      cloudCoverPct = Math.min(100, Math.floor(85 + Math.random() * 15))
+    } else if (fogRisk !== 'none') {
+      cloudCoverPct = Math.min(100, Math.floor(70 + Math.random() * 20))
+    } else if (cloudBaseM < 800) {
+      cloudCoverPct = Math.floor(60 + Math.random() * 25)
+    } else {
+      cloudCoverPct = Math.floor(10 + Math.random() * 35)
+    }
+
     // КР-індекс геомагнітної активності (0..9)
     // Змоделюємо тимчасовий сплеск до 4-5 через 10 годин
     let kpIndex = 2
@@ -111,6 +123,7 @@ export function generateMockForecast(
       visibilityKm,
       fogRisk,
       cloudBaseM,
+      cloudCoverPct,
       kpIndex,
       levels: levelsRecord,
     })

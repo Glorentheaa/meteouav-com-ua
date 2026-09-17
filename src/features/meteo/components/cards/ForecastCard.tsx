@@ -3,7 +3,7 @@ import React from 'react'
 interface ForecastCardProps {
   title: string
   icon: React.ComponentType<{ className?: string }>
-  updatedText?: string
+  updatedText?: string | null
   className?: string
   criticalNotice?: string | null
   headerAction?: React.ReactNode
@@ -13,7 +13,7 @@ interface ForecastCardProps {
 export const ForecastCard: React.FC<ForecastCardProps> = ({
   title,
   icon: Icon,
-  updatedText = 'Оновлено 00:10:05 назад',
+  updatedText,
   className = '',
   criticalNotice,
   headerAction,
@@ -44,9 +44,11 @@ export const ForecastCard: React.FC<ForecastCardProps> = ({
       )}
 
       {/* Підвал оновлення */}
-      <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-2 text-right shrink-0">
-        {updatedText}
-      </p>
+      {updatedText && (
+        <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-2 text-right shrink-0">
+          {updatedText}
+        </p>
+      )}
     </div>
   )
 }

@@ -26,6 +26,7 @@ export interface HourlyForecastPoint {
   visibilityKm: number    // видимість, км
   fogRisk: FogRisk        // ризик туману
   cloudBaseM: number      // висота нижньої кромки хмар, метри
+  cloudCoverPct?: number  // % загального хмарного покриття (0-100)
   kpIndex: number         // геомагнітна активність КР-індекс (0 - 9)
   levels: Record<AltitudeLevel, AltitudeWindData>
 }
