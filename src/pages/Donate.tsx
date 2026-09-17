@@ -2,15 +2,21 @@ import React from 'react'
 
 export const Donate: React.FC = () => (
   <div className="w-full flex flex-col gap-6">
+    {/* ========================================================================= */}
+    {/* [STATIC_TEXT] ШАПКА СТОРІНКИ "ПІДТРИМАТИ ПРОЕКТ"                          */}
+    {/* ========================================================================= */}
     <header className="border-b border-slate-300 dark:border-slate-800 pb-4">
       <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Підтримати проект</h1>
       <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
         Вам сподобався досвід використання нашого сервісу прогнозування погоди?
       </p>
     </header>
+
     <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 rounded-xl shadow-sm dark:shadow-none">
       <div className="flex flex-col space-y-8">
-        {/* Вступний блок */}
+        {/* ========================================================================= */}
+        {/* [STATIC_TEXT] ВСТУП: БЕЗКОШТОВНІСТЬ СЕРВІСУ ТА ПОТРЕБА В СЕРВЕРАХ        */}
+        {/* ========================================================================= */}
         <div className="space-y-4">
           <p className="text-slate-500 dark:text-slate-400">
             MeteoUAV був і залишатиметься безкоштовним інструментом без прихованих платежів, обов'язкових підписок чи обмежень у базовому плануванні. Це некомерційна ініціатива, створена для своїх.
@@ -20,7 +26,9 @@ export const Donate: React.FC = () => (
           </p>
         </div>
 
-        {/* Блок про розширені можливості */}
+        {/* ========================================================================= */}
+        {/* [STATIC_TEXT] БЛОК: "НА ЩО ЙДУТЬ КОШТИ?"                                 */}
+        {/* ========================================================================= */}
         <div className="space-y-4">
           <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-200">
             На що йдуть кошти?
@@ -35,9 +43,10 @@ export const Donate: React.FC = () => (
           </div>
         </div>
 
-        {/* Блок з кнопками оплати */}
+        {/* ========================================================================= */}
+        {/* [STATIC_TEXT] КНОПКА ДОНАТУ ТА ПЛАТІЖНИЙ СЕРВІС                          */}
+        {/* ========================================================================= */}
         <div className="flex flex-col sm:flex-row gap-4 pt-4">
-          {/* Кнопка Donatello */}
           <a
             href="https://donatello.to/MeteoUAV"
             target="_blank"

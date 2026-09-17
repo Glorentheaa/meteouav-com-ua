@@ -30,6 +30,7 @@ import {
   evaluateKpIndex,
   evaluateCloudBase,
   getSeverityCellClass,
+  isWarningEnabled,
 } from '../../utils/warningEvaluator'
 
 interface ShortTermCardProps {
@@ -453,7 +454,11 @@ const ForecastGrid: React.FC<ForecastGridProps> = ({
 
             {/* Колонки температури з індивідуальними фоновими статусами безпеки */}
             {points.map((pt) => {
-              const tempSev = evaluateTemp(pt.temp, warnings.minTemp, warnings.maxTemp)
+              const minTempActive = isWarningEnabled(warnings, 'minTemp')
+              const maxTempActive = isWarningEnabled(warnings, 'maxTemp')
+              const minT = minTempActive ? warnings.minTemp : -999
+              const maxT = maxTempActive ? warnings.maxTemp : 999
+              const tempSev = minTempActive || maxTempActive ? evaluateTemp(pt.temp, minT, maxT) : 'ideal'
               const bgClass = getSeverityCellClass(tempSev)
 
               const roundedTemp = Math.round(pt.temp)
@@ -485,8 +490,10 @@ const ForecastGrid: React.FC<ForecastGridProps> = ({
             }`}
           >
             {points.map((pt) => {
-              const windSev = evaluateWind(pt.surfaceWind, warnings.wind)
-              const gustSev = evaluateGusts(pt.surfaceGusts, warnings.gusts)
+              const windActive = isWarningEnabled(warnings, 'wind')
+              const gustsActive = isWarningEnabled(warnings, 'gusts')
+              const windSev = windActive ? evaluateWind(pt.surfaceWind, warnings.wind) : 'ideal'
+              const gustSev = gustsActive ? evaluateGusts(pt.surfaceGusts, warnings.gusts) : 'ideal'
               const roundedWind = Math.round(pt.surfaceWind)
               const roundedGusts = Math.round(pt.surfaceGusts)
 
@@ -539,7 +546,9 @@ const ForecastGrid: React.FC<ForecastGridProps> = ({
             }`}
           >
             {points.map((pt) => {
-              const cloudSev = evaluateCloudBase(pt.cloudBaseM, maxFlightLevelM)
+              const cloudActive = isWarningEnabled(warnings, 'cloudBase')
+              const cloudLimit = warnings.cloudBase ?? maxFlightLevelM
+              const cloudSev = cloudActive ? evaluateCloudBase(pt.cloudBaseM, cloudLimit) : 'ideal'
               const cloudCover = pt.cloudCoverPct ?? (pt.cloudBaseM < 800 ? 80 : 35)
               const coverSev = cloudCover >= 90 ? 'attention' : cloudCover >= 60 ? 'favorable' : 'ideal'
               const roundedBase = Math.round(pt.cloudBaseM)
@@ -602,8 +611,10 @@ const ForecastGrid: React.FC<ForecastGridProps> = ({
             </svg>
 
             {points.map((pt) => {
-              const precipSev = evaluatePrecip(pt.precipMm, warnings.precip)
-              const humSev = evaluateHumidity(pt.humidity, warnings.humidity)
+              const precipActive = isWarningEnabled(warnings, 'precip')
+              const humActive = isWarningEnabled(warnings, 'humidity')
+              const precipSev = precipActive ? evaluatePrecip(pt.precipMm, warnings.precip) : 'ideal'
+              const humSev = humActive ? evaluateHumidity(pt.humidity, warnings.humidity) : 'ideal'
               const roundedPrecip = pt.precipMm <= 0 ? '—' : Math.round(pt.precipMm) || '<1'
               const roundedHum = Math.round(pt.humidity)
 
@@ -634,7 +645,11 @@ const ForecastGrid: React.FC<ForecastGridProps> = ({
             }`}
           >
             {points.map((pt) => {
-              const fogSev = evaluateFog(pt.fogRisk, pt.visibilityKm, warnings.fog, warnings.visibility)
+              const fogActive = isWarningEnabled(warnings, 'fog')
+              const visActive = isWarningEnabled(warnings, 'visibility')
+              const fogSetting = fogActive ? warnings.fog : 'вимкнути'
+              const visLimit = visActive ? warnings.visibility : 0
+              const fogSev = (fogActive || visActive) ? evaluateFog(pt.fogRisk, pt.visibilityKm, fogSetting, visLimit) : 'ideal'
               const fogText = pt.fogRisk === 'high' ? 'Густий' : pt.fogRisk === 'low' ? 'Слабк.' : '—'
               const roundedVis = Math.round(pt.visibilityKm)
 
@@ -663,7 +678,9 @@ const ForecastGrid: React.FC<ForecastGridProps> = ({
             className={`flex bg-slate-50/50 dark:bg-slate-950/40 ${isExpanded ? 'h-10' : 'h-8'}`}
           >
             {points.map((pt) => {
-              const kpSev = evaluateKpIndex(pt.kpIndex)
+              const kpActive = isWarningEnabled(warnings, 'kpIndex')
+              const kpLimit = warnings.kpIndex ?? 5
+              const kpSev = kpActive ? evaluateKpIndex(pt.kpIndex, kpLimit) : 'ideal'
               const bgClass = getSeverityCellClass(kpSev)
 
               return (

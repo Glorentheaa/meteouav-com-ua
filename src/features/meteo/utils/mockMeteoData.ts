@@ -3,6 +3,7 @@ import type {
   HourlyForecastPoint,
   AltitudeLevel,
   AltitudeWindData,
+  WeeklyDayData,
 } from '../types/meteoData'
 
 /**
@@ -16,8 +17,7 @@ export function generateMockForecast(
   const hourly: HourlyForecastPoint[] = []
 
   // Базовий напрямок вітру (наприклад, західний 250°)
-  let baseDirection = 240 + Math.floor(Math.random() * 40 - 20)
-
+  const baseDirection = 240 + Math.floor(Math.random() * 40 - 20)
 
   for (let i = 0; i < 48; i++) {
     const pointDate = new Date(now.getTime() + i * 3600 * 1000)
@@ -36,11 +36,11 @@ export function generateMockForecast(
     let targetMaxAltWind: number
     let targetMaxAltGust: number
     let precipMm = 0.0
-    let fogRisk: 'none' | 'low' | 'high' = 'none'
-    let visibilityKm = 10.0
-    let cloudBaseM = 1800
-    let cloudCoverPct = 20
-    let kpIndex = 2
+    const fogRisk: 'none' | 'low' | 'high' = 'none'
+    let visibilityKm: number
+    let cloudBaseM: number
+    let cloudCoverPct: number
+    let kpIndex: number
 
     if ((hour >= 7 && hour < 9) || (hour >= 19 && hour < 21)) {
       // 07:00-09:00 та 19:00-21:00: Небезпечні умови (DANGER - червоний)
@@ -154,12 +154,41 @@ export function generateMockForecast(
     })
   }
 
+  // Моделювання 7-денного прогнозу (оновлюється раз на 48 годин на стороні n8n)
+  const UKR_DAYS = ['Нд', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб']
+  const weekly: WeeklyDayData[] = []
+  for (let d = 0; d < 7; d++) {
+    const dayDate = new Date(now.getTime() + d * 86400 * 1000)
+    const dayName = UKR_DAYS[dayDate.getDay()]
+    const dateFormatted = dayDate.toLocaleDateString('uk-UA', { day: '2-digit', month: '2-digit' })
+    const fullDate = dayDate.toISOString().split('T')[0]
+    weekly.push({
+      dayName,
+      dateFormatted,
+      fullDate,
+      tempMin: 12 + (d % 3),
+      tempMax: 21 + (d % 4),
+      windMin: 2 + (d % 2),
+      windMax: 6 + (d % 3),
+      gustsMax: 9 + (d % 4),
+      directionDeg: (240 + d * 20) % 360,
+      precipMin: 0,
+      precipMax: d % 3 === 0 ? 0.8 : 0,
+      cloudBaseMin: 1100 + (d % 3) * 200,
+      cloudBaseMax: 1900,
+      cloudCoverPct: 25 + (d % 4) * 15,
+      kpMin: 1 + (d % 2),
+      kpMax: 2 + (d % 3),
+    })
+  }
+
   return {
     version: '1.0',
     updatedAt: new Date().toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit' }),
     sectorId,
     locationName,
     hourly,
+    weekly,
     aiSummary: {
       status: 'warning',
       title: 'Умови польотів помірно складні (є обмеження)',

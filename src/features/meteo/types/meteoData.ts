@@ -71,12 +71,32 @@ export interface AstronomyData {
   moon: MoonData
 }
 
+export interface WeeklyDayData {
+  dayName: string             // "Пн", "Вт" тощо
+  dateFormatted: string       // "18.09"
+  fullDate: string           // "2026-09-18"
+  tempMin: number            // мінімальна температура доби, °C
+  tempMax: number            // максимальна температура доби, °C
+  windMin: number            // мінімальний приземний вітер, м/с
+  windMax: number            // максимальний приземний вітер, м/с
+  gustsMax: number           // максимальні пориви, м/с
+  directionDeg: number       // переважаючий напрямок вітру, градуси
+  precipMin: number          // мінімальні опади, мм
+  precipMax: number          // максимальні опади за добу, мм
+  cloudBaseMin: number       // мінімальна висота кромки хмар, м
+  cloudBaseMax: number       // максимальна висота хмар, м
+  cloudCoverPct: number      // середнє хмарне покриття, %
+  kpMin: number              // мінімальний КР-індекс
+  kpMax: number              // максимальний КР-індекс
+}
+
 export interface FullMeteoForecastResponse {
   version: string
-  updatedAt: string           // ISO рядок або формат часу
+  updatedAt: string           // ISO рядок або формат часу оновлення
   sectorId: string
   locationName: string
-  hourly: HourlyForecastPoint[]
+  hourly: HourlyForecastPoint[] // Повний 48-годинний масив погодинних точок (всі 12 ешелонів)
+  weekly?: WeeklyDayData[]    // Окремий 7-денний прогноз від n8n (оновлюється раз на 48 годин)
   aiSummary: AiMeteorologistSummary
   weeklyChartUrl?: string
   astronomy: AstronomyData

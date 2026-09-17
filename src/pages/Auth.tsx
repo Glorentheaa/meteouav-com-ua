@@ -237,7 +237,9 @@ export const Auth: React.FC = () => {
   return (
     <div className="w-full max-w-md mx-auto py-6 px-4">
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl overflow-hidden transition-all">
-        {/* Верхня панель перемикання або навігації */}
+        {/* ========================================================================= */}
+        {/* [STATIC_TEXT] ВЕРХНЯ ПАНЕЛЬ: ПЕРЕМИКАЧ ВХІД / РЕЄСТРАЦІЯ                  */}
+        {/* ========================================================================= */}
         {mode === 'login' || mode === 'register' ? (
           <div className="grid grid-cols-2 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/50 p-1.5 gap-1.5">
             <button
@@ -294,6 +296,9 @@ export const Auth: React.FC = () => {
         )}
 
         <div className="p-6">
+          {/* ========================================================================= */}
+          {/* [STATIC_TEXT] ЗАГОЛОВКИ ТА ПІДКАЗКИ ДЛЯ РІЗНИХ РЕЖИМІВ ВХОДУ              */}
+          {/* ========================================================================= */}
           <div className="text-center mb-6">
             <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
               {mode === 'login' && 'Вхід у систему'}
@@ -439,14 +444,18 @@ export const Auth: React.FC = () => {
               </div>
             )}
 
-            {/* Інформація про тривалість сесії (лише login / register) */}
+            {/* ========================================================================= */}
+            {/* [STATIC_TEXT] ПОВІДОМЛЕННЯ ПРО ТРИВАЛІСТЬ СЕСІЇ (31 ДЕНЬ)                 */}
+            {/* ========================================================================= */}
             {(mode === 'login' || mode === 'register') && (
               <div className="text-[11px] text-slate-500 dark:text-slate-400 text-center pt-1">
                 Сесія зберігається на пристрої протягом 31 дня.
               </div>
             )}
 
-            {/* Кнопка відправки */}
+            {/* ========================================================================= */}
+            {/* [STATIC_TEXT] КНОПКА ВІДПРАВКИ ФОРМИ В ЗАЛЕЖНОСТІ ВІД РЕЖИМУ              */}
+            {/* ========================================================================= */}
             <button
               type="submit"
               disabled={isSubmitting || (mode === 'register' && !isCaptchaVerified)}

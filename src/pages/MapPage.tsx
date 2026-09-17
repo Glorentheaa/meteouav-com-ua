@@ -251,7 +251,9 @@ export const MapPage: React.FC = () => {
 
   return (
     <div className="relative w-full h-[calc(100vh-80px)] min-h-[500px] flex flex-col overflow-hidden">
-      {/* Верхня плашка управління картою */}
+      {/* ========================================================================= */}
+      {/* [STATIC_TEXT] MAP: CONTROLS                                               */}
+      {/* ========================================================================= */}
       <div className="absolute top-4 left-4 z-20 flex items-center gap-2">
         <button
           type="button"
@@ -301,7 +303,9 @@ export const MapPage: React.FC = () => {
         </button>
       </div>
 
-      {/* Підказка щодо вибору точки */}
+      {/* ========================================================================= */}
+      {/* [STATIC_TEXT] MAP: TACTICAL_HINT                                          */}
+      {/* ========================================================================= */}
       <div className="absolute top-4 right-4 z-20 hidden md:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-900/80 text-white text-[11px] font-medium backdrop-blur-md border border-white/10 shadow-md">
         <ShieldAlert className="w-3.5 h-3.5 text-emerald-400" />
         <span>Клік або довгий тап встановлює центр тактичного сектора (~5х8 км)</span>
@@ -310,7 +314,9 @@ export const MapPage: React.FC = () => {
       {/* Контейнер Leaflet */}
       <div ref={mapContainerRef} className="w-full h-full z-0" />
 
-      {/* Нижня плашка вибору сектора */}
+      {/* ========================================================================= */}
+      {/* [STATIC_TEXT] MAP: SECTOR_PANEL                                           */}
+      {/* ========================================================================= */}
       {sectorInfo && (
         <div className="absolute bottom-5 left-4 right-4 sm:left-auto sm:right-5 sm:max-w-md z-20 bg-white/95 dark:bg-slate-900/95 rounded-2xl p-4 sm:p-5 shadow-2xl backdrop-blur-md border border-slate-200 dark:border-slate-800 animate-in fade-in slide-in-from-bottom-4 duration-300">
           <div className="flex items-start justify-between gap-3 mb-2">

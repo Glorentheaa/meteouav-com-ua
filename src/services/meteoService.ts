@@ -1,9 +1,19 @@
 import type { SavedLocation } from '../features/meteo/types/location'
-import type { ForecastDepth, ForecastDetail, FlightLevels, MeteoWarnings } from '../features/meteo/types/meteo'
 import type { FullMeteoForecastResponse } from '../features/meteo/types/meteoData'
 import { generateMockForecast } from '../features/meteo/utils/mockMeteoData'
 import { snapToSector } from '../features/meteo/utils/geoUtils'
 
+/**
+ * Контракт запиту до бекенду n8n:
+ * n8n отримує виключно інформацію про сектор локації та користувача.
+ * n8n самостійно виконує максимальний розрахунок:
+ * - 48 годин з кроком в 1 годину;
+ * - всі 12 висотних ешелонів (10..3000м);
+ * - окремий тижневий прогноз на 7 днів (кешується на 48 годин);
+ * - інтервальне кешування по секторах (оновлення не частіше ніж раз на 3 години: 00:00, 03:00...).
+ * Клієнтська частина MeteoUAV отримує повний масив та самостійно фільтрує/відображає
+ * обрану користувачем глибину, крок та пороги небезпеки без повторних запитів.
+ */
 export interface MeteoRequestPayload {
   version: string
   timestamp: string
@@ -28,21 +38,6 @@ export interface MeteoRequestPayload {
       }
       approx_size_km: string
     }
-  }
-  parameters: {
-    depth_hours: number
-    detail_hours: number
-    flight_levels_m: number
-  }
-  warnings: {
-    wind_speed_limit: number
-    gust_limit: number
-    precipitation: string
-    fog: string
-    humidity_limit: number
-    min_visibility_km: number
-    min_temp_c: number
-    max_temp_c: number
   }
 }
 
@@ -87,20 +82,17 @@ export function saveCachedForecast(data: FullMeteoForecastResponse): void {
 
 /**
  * Побудова стандартизованого об'єкта запиту для n8n
+ * Відправляє на n8n тільки локацію (сектор) та дані користувача.
  */
 export function buildMeteoPayload(params: {
   location: SavedLocation
-  depth: ForecastDepth
-  detail: ForecastDetail
-  levels: FlightLevels
-  warnings: MeteoWarnings
   user?: {
     id: string | null
     email: string | null
     isPro: boolean
   }
 }): MeteoRequestPayload {
-  const { location, depth, detail, levels, warnings, user } = params
+  const { location, user } = params
   const sectorInfo = snapToSector(location.lat, location.lon)
 
   return {
@@ -128,21 +120,6 @@ export function buildMeteoPayload(params: {
         approx_size_km: sectorInfo.approxSizeKm,
       },
     },
-    parameters: {
-      depth_hours: parseInt(depth, 10),
-      detail_hours: parseInt(detail, 10),
-      flight_levels_m: parseInt(levels, 10),
-    },
-    warnings: {
-      wind_speed_limit: warnings.wind,
-      gust_limit: warnings.gusts,
-      precipitation: warnings.precip,
-      fog: warnings.fog,
-      humidity_limit: warnings.humidity,
-      min_visibility_km: warnings.visibility,
-      min_temp_c: warnings.minTemp,
-      max_temp_c: warnings.maxTemp,
-    },
   }
 }
 
@@ -159,11 +136,10 @@ export async function sendMeteoRequest(payload: MeteoRequestPayload): Promise<Me
     console.error('Помилка кешування останнього payload:', e)
   }
 
-  console.group('📡 [MeteoUAV -> n8n] Підготовка та відправка погодного запиту')
+  console.group('📡 [MeteoUAV -> n8n] Запит прогнозу для сектора')
   console.log('Сектор:', payload.location.sector_id, `(${payload.location.settlement})`)
-  console.log('Параметри:', payload.parameters)
-  console.log('Попередження:', payload.warnings)
-  console.log('Повний Payload:', payload)
+  console.log('Координати сектора:', payload.location.sector)
+  console.log('Повний Payload запиту:', payload)
   console.groupEnd()
 
   if (webhookUrl) {

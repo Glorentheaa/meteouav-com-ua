@@ -52,6 +52,7 @@ export const MeteoApp: React.FC = () => {
     setLevels,
     warnings,
     updateWarning,
+    toggleWarningEnabled,
     showAdvancedSettings,
     setShowAdvancedSettings,
     showWarnings,
@@ -109,7 +110,9 @@ export const MeteoApp: React.FC = () => {
         const parsed = JSON.parse(active)
         if (parsed?.sectorId) return parsed
       }
-    } catch {}
+    } catch {
+      // Ігноруємо можливу помилку парсингу локації
+    }
 
     try {
       const saved = localStorage.getItem(APPLIED_STATE_STORAGE_KEY) || localStorage.getItem('meteo_applied_state_v3')
@@ -117,7 +120,9 @@ export const MeteoApp: React.FC = () => {
         const parsed = JSON.parse(saved)
         if (parsed?.location) return parsed.location
       }
-    } catch {}
+    } catch {
+      // Ігноруємо можливу помилку парсингу збереженого стану
+    }
     return null
   })
 
@@ -162,13 +167,9 @@ export const MeteoApp: React.FC = () => {
 
     setIsRefreshing(true)
 
-    // Формуємо корисне навантаження на базі збережених/активних параметрів користувача
+    // Формуємо запит на n8n (передається лише локація та сесія користувача)
     const payload = buildMeteoPayload({
       location: selectedLocation,
-      depth,
-      detail,
-      levels,
-      warnings,
       user: user
         ? {
             id: user.id,
@@ -220,7 +221,9 @@ export const MeteoApp: React.FC = () => {
 
   return (
     <div className="w-full flex flex-col gap-5">
-      {/* Шапка сторінки */}
+      {/* ========================================================================= */}
+      {/* [STATIC_TEXT] ГОЛОВНА ШАПКА ТА ОПИС СЕРВІСУ                              */}
+      {/* ========================================================================= */}
       <header className="flex flex-col gap-4">
         <div className="max-w-3xl">
           <p className="text-base font-medium text-emerald-600 dark:text-emerald-500 mb-2">
@@ -243,7 +246,9 @@ export const MeteoApp: React.FC = () => {
               }}
             />
 
-            {/* Інфо-текст (Середина) */}
+            {/* ========================================================================= */}
+            {/* [STATIC_TEXT] ПІДКАЗКА ПРО РОЗКЛАД ОНОВЛЕНЬ ПОГОДИ (1 раз на 3 години)    */}
+            {/* ========================================================================= */}
             <div className="w-full h-full flex items-center lg:px-2">
               <div className="text-[10px] text-slate-500 dark:text-slate-400 leading-tight">
                 <p>
@@ -282,6 +287,9 @@ export const MeteoApp: React.FC = () => {
                   </div>
                 </label>
 
+                {/* ========================================================================= */}
+                {/* [STATIC_TEXT] ТЕКСТ КНОПКИ ОНОВЛЕННЯ ПРОГНОЗУ                             */}
+                {/* ========================================================================= */}
                 <button
                   type="button"
                   onClick={handleRefresh}
@@ -315,6 +323,7 @@ export const MeteoApp: React.FC = () => {
               setLevels={setLevels}
               warnings={warnings}
               updateWarning={updateWarning}
+              toggleWarningEnabled={toggleWarningEnabled}
               showWarnings={showWarnings}
               setShowWarnings={setShowWarnings}
               onFactoryReset={handleDrawerFactoryReset}
@@ -324,7 +333,9 @@ export const MeteoApp: React.FC = () => {
         </div>
       </header>
 
-      {/* Якщо стан прогнозу ще не сформований — показуємо стильну заглушку першого входу */}
+      {/* ========================================================================= */}
+      {/* [STATIC_TEXT] ЗАГЛУШКА ПЕРШОГО ВХОДУ (КОЛИ ЛОКАЦІЮ ЩЕ НЕ ОБРАНО)          */}
+      {/* ========================================================================= */}
       {!appliedForecast ? (
         <div className="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-2xl p-8 sm:p-12 shadow-sm flex flex-col items-center justify-center text-center animate-in fade-in zoom-in-95 duration-300 my-2">
           <div className="w-16 h-16 rounded-2xl bg-emerald-500/10 dark:bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center mb-4 text-emerald-600 dark:text-emerald-400 shadow-inner">
@@ -434,6 +445,7 @@ export const MeteoApp: React.FC = () => {
                       isSunMoonVisible={blocks.sunMoon}
                       chartUrl={appliedForecast.forecastData?.weeklyChartUrl}
                       hourly={appliedForecast.forecastData?.hourly}
+                      weekly={appliedForecast.forecastData?.weekly}
                       className="h-full"
                     />
                   )}
@@ -451,7 +463,9 @@ export const MeteoApp: React.FC = () => {
         </>
       )}
 
-      {/* Довідкова інформація та Меню видимості блоків */}
+      {/* ========================================================================= */}
+      {/* [STATIC_TEXT] БЛОК ДОВІДКОВОЇ ІНФОРМАЦІЇ ВНИЗУ                            */}
+      {/* ========================================================================= */}
       <div className="flex flex-col mt-4" ref={controlsRef}>
         <div className="w-full h-px bg-slate-300 dark:bg-slate-700 mb-4" />
         <div className="max-w-3xl mb-6">

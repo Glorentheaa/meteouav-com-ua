@@ -53,7 +53,9 @@ export const Header: React.FC<{ onMenuClick?: () => void }> = ({ onMenuClick }) 
             </div>
           </div>
 
-          {/* Права частина: Кнопка «Встановити» для планшетів / широких мобільних екранів (на ПК не відображається) */}
+          {/* ========================================================================= */}
+          {/* [STATIC_TEXT] HEADER: INSTALL_PWA_BUTTON                                  */}
+          {/* ========================================================================= */}
           {!isHome && canInstall && (
             <div className="hidden md:flex items-center">
               <button

@@ -1,10 +1,18 @@
-import type { MeteoWarnings } from '../types/meteo'
+import type { MeteoWarnings, WarningKey } from '../types/meteo'
 import type {
   HourlyForecastPoint,
   WarningSeverity,
   HourEvaluation,
   FogRisk,
 } from '../types/meteoData'
+
+/**
+ * Перевірка чи активовано параметр попередження користувачем
+ */
+export function isWarningEnabled(warnings: MeteoWarnings, key: WarningKey): boolean {
+  if (!warnings.enabled) return true
+  return warnings.enabled[key] !== false
+}
 
 /**
  * Оцінка швидкості вітру відносно ліміту (5 градацій)
@@ -84,21 +92,21 @@ export function evaluateHumidity(humidity: number, limit: number): WarningSeveri
  * Оцінка геомагнітної активності (КР-індекс 0..9)
  * Згідно з правилами MeteoUAV: КР-індекс не є в найвищому пріоритеті і не блокує в червоний (danger).
  */
-export function evaluateKpIndex(kp: number): WarningSeverity {
-  if (kp >= 5) return 'warning'
-  if (kp === 4) return 'attention'
+export function evaluateKpIndex(kp: number, limit: number = 5): WarningSeverity {
+  if (kp >= limit) return 'warning'
+  if (kp >= Math.max(1, limit - 1)) return 'attention'
   if (kp >= 2) return 'favorable'
   return 'ideal'
 }
 
 /**
- * Оцінка кромки хмар відносно робочого ешелону польоту (5 градацій)
+ * Оцінка кромки хмар відносно робочого ешелону польоту або ліміту (5 градацій)
  */
-export function evaluateCloudBase(cloudBaseM: number, targetAltitudeM: number): WarningSeverity {
-  if (cloudBaseM <= targetAltitudeM) return 'danger' // БПЛА всередині хмари
-  if (cloudBaseM <= targetAltitudeM + 100) return 'warning'
-  if (cloudBaseM <= targetAltitudeM + 250) return 'attention'
-  if (cloudBaseM <= targetAltitudeM + 500) return 'favorable'
+export function evaluateCloudBase(cloudBaseM: number, limitM: number = 300): WarningSeverity {
+  if (cloudBaseM <= limitM) return 'danger' // БПЛА всередині хмари або нижче безпечного ліміту
+  if (cloudBaseM <= limitM + 100) return 'warning'
+  if (cloudBaseM <= limitM + 250) return 'attention'
+  if (cloudBaseM <= limitM + 500) return 'favorable'
   return 'ideal'
 }
 
@@ -113,6 +121,7 @@ const SEVERITY_RANK: Record<WarningSeverity, number> = {
 
 /**
  * Комплексна інтегральна оцінка безпеки конкретної години (5 градацій)
+ * Враховує ввімкнені/вимкнені галочками параметри користувача
  */
 export function evaluateHour(
   point: HourlyForecastPoint,
@@ -131,51 +140,83 @@ export function evaluateHour(
     }
   }
 
-  // 1. Вітер на поверхні
-  const windSev = evaluateWind(point.surfaceWind, warnings.wind)
-  elevate(windSev, `Вітер ${point.surfaceWind.toFixed(1)} м/с (ліміт ${warnings.wind})`)
+  // 1. Вітер на поверхні (якщо увімкнено)
+  if (isWarningEnabled(warnings, 'wind')) {
+    const windSev = evaluateWind(point.surfaceWind, warnings.wind)
+    elevate(windSev, `Вітер ${point.surfaceWind.toFixed(1)} м/с (ліміт ${warnings.wind})`)
+  }
 
-  // 2. Пориви на поверхні
-  const gustSev = evaluateGusts(point.surfaceGusts, warnings.gusts)
-  elevate(gustSev, `Пориви ${point.surfaceGusts.toFixed(1)} м/с (ліміт ${warnings.gusts})`)
+  // 2. Пориви на поверхні (якщо увімкнено)
+  if (isWarningEnabled(warnings, 'gusts')) {
+    const gustSev = evaluateGusts(point.surfaceGusts, warnings.gusts)
+    elevate(gustSev, `Пориви ${point.surfaceGusts.toFixed(1)} м/с (ліміт ${warnings.gusts})`)
+  }
 
-  // 3. Вітер та пориви по ешелонах до maxFlightLevelM
-  for (const [lvlStr, lvlData] of Object.entries(point.levels)) {
-    const lvlNum = parseInt(lvlStr, 10)
-    if (lvlNum <= maxFlightLevelM) {
-      const lvlWindSev = evaluateWind(lvlData.speed, warnings.wind)
-      elevate(lvlWindSev, `Вітер ${lvlData.speed.toFixed(1)} м/с на ${lvlNum}м`)
+  // 3. Вітер та пориви по ешелонах до maxFlightLevelM (якщо увімкнено відповідні галочки)
+  const windActive = isWarningEnabled(warnings, 'wind')
+  const gustsActive = isWarningEnabled(warnings, 'gusts')
+  if (windActive || gustsActive) {
+    for (const [lvlStr, lvlData] of Object.entries(point.levels)) {
+      const lvlNum = parseInt(lvlStr, 10)
+      if (lvlNum <= maxFlightLevelM) {
+        if (windActive) {
+          const lvlWindSev = evaluateWind(lvlData.speed, warnings.wind)
+          elevate(lvlWindSev, `Вітер ${lvlData.speed.toFixed(1)} м/с на ${lvlNum}м`)
+        }
 
-      if (lvlData.gusts !== undefined) {
-        const lvlGustSev = evaluateGusts(lvlData.gusts, warnings.gusts)
-        elevate(lvlGustSev, `Пориви ${lvlData.gusts.toFixed(1)} м/с на ${lvlNum}м`)
+        if (gustsActive && lvlData.gusts !== undefined) {
+          const lvlGustSev = evaluateGusts(lvlData.gusts, warnings.gusts)
+          elevate(lvlGustSev, `Пориви ${lvlData.gusts.toFixed(1)} м/с на ${lvlNum}м`)
+        }
       }
     }
   }
 
-  // 4. Опади
-  const precipSev = evaluatePrecip(point.precipMm, warnings.precip)
-  elevate(precipSev, `Опади ${point.precipMm.toFixed(1)} мм/год`)
+  // 4. Опади (якщо увімкнено)
+  if (isWarningEnabled(warnings, 'precip')) {
+    const precipSev = evaluatePrecip(point.precipMm, warnings.precip)
+    elevate(precipSev, `Опади ${point.precipMm.toFixed(1)} мм/год`)
+  }
 
-  // 5. Туман / Видимість
-  const fogSev = evaluateFog(point.fogRisk, point.visibilityKm, warnings.fog, warnings.visibility)
-  elevate(fogSev, `Видимість ${point.visibilityKm.toFixed(1)} км (туман: ${point.fogRisk})`)
+  // 5. Туман / Видимість (якщо хоча б одне увімкнено)
+  const fogActive = isWarningEnabled(warnings, 'fog')
+  const visActive = isWarningEnabled(warnings, 'visibility')
+  if (fogActive || visActive) {
+    const fogSetting = fogActive ? warnings.fog : 'вимкнути'
+    const visLimit = visActive ? warnings.visibility : 0
+    const fogSev = evaluateFog(point.fogRisk, point.visibilityKm, fogSetting, visLimit)
+    elevate(fogSev, `Видимість ${point.visibilityKm.toFixed(1)} км (туман: ${point.fogRisk})`)
+  }
 
-  // 6. Вологість
-  const humSev = evaluateHumidity(point.humidity, warnings.humidity)
-  elevate(humSev, `Вологість ${point.humidity}%`)
+  // 6. Вологість (якщо увімкнено)
+  if (isWarningEnabled(warnings, 'humidity')) {
+    const humSev = evaluateHumidity(point.humidity, warnings.humidity)
+    elevate(humSev, `Вологість ${point.humidity}%`)
+  }
 
-  // 7. Температура
-  const tempSev = evaluateTemp(point.temp, warnings.minTemp, warnings.maxTemp)
-  elevate(tempSev, `Температура ${point.temp.toFixed(1)}°C`)
+  // 7. Температура (якщо увімкнено min або max)
+  const minTempActive = isWarningEnabled(warnings, 'minTemp')
+  const maxTempActive = isWarningEnabled(warnings, 'maxTemp')
+  if (minTempActive || maxTempActive) {
+    const minT = minTempActive ? warnings.minTemp : -999
+    const maxT = maxTempActive ? warnings.maxTemp : 999
+    const tempSev = evaluateTemp(point.temp, minT, maxT)
+    elevate(tempSev, `Температура ${point.temp.toFixed(1)}°C`)
+  }
 
-  // 8. КР-індекс (геомагнітна активність)
-  const kpSev = evaluateKpIndex(point.kpIndex)
-  elevate(kpSev, `КР-індекс ${point.kpIndex}`)
+  // 8. КР-індекс (геомагнітна активність, якщо увімкнено)
+  if (isWarningEnabled(warnings, 'kpIndex')) {
+    const kpLimit = warnings.kpIndex ?? 5
+    const kpSev = evaluateKpIndex(point.kpIndex, kpLimit)
+    elevate(kpSev, `КР-індекс ${point.kpIndex} (ліміт ${kpLimit})`)
+  }
 
-  // 9. Кромка хмар
-  const cloudSev = evaluateCloudBase(point.cloudBaseM, maxFlightLevelM)
-  elevate(cloudSev, `Кромка хмар ${point.cloudBaseM}м (ешелон ${maxFlightLevelM}м)`)
+  // 9. Кромка хмар (якщо увімкнено)
+  if (isWarningEnabled(warnings, 'cloudBase')) {
+    const cloudLimit = warnings.cloudBase ?? maxFlightLevelM
+    const cloudSev = evaluateCloudBase(point.cloudBaseM, cloudLimit)
+    elevate(cloudSev, `Кромка хмар ${point.cloudBaseM}м (ліміт ${cloudLimit}м)`)
+  }
 
   return { severity, issues }
 }

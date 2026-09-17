@@ -45,6 +45,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
       <aside
         className={`fixed top-0 left-0 h-full w-72 z-[70] bg-white dark:bg-slate-950 border-r border-slate-200 dark:border-slate-800 shadow-2xl transition-transform duration-300 ease-in-out flex flex-col ${sidebarClass}`}
       >
+        {/* ========================================================================= */}
+        {/* [STATIC_TEXT] SIDEBAR: TITLE                                              */}
+        {/* ========================================================================= */}
         <div className="flex items-center justify-between p-4 border-b border-slate-200 dark:border-slate-800">
           <span className="font-semibold text-lg text-slate-800 dark:text-slate-200">
             Меню
@@ -59,6 +62,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
           </button>
         </div>
 
+        {/* ========================================================================= */}
+        {/* [STATIC_TEXT] SIDEBAR: NAVIGATION_ITEMS                                   */}
+        {/* ========================================================================= */}
         <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-1">
           {/* Консоль погоди */}
           <NavLink
@@ -151,7 +157,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
             Про проєкт
           </NavLink>
 
-          {/* Встановлення PWA для мобільних пристроїв та планшетів */}
+          {/* ========================================================================= */}
+          {/* [STATIC_TEXT] SIDEBAR: PWA_INSTALL                                        */}
+          {/* ========================================================================= */}
           {canInstall && (
             <div className="pt-3">
               <button

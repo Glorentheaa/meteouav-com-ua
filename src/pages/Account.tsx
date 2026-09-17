@@ -67,12 +67,20 @@ export const Account: React.FC = () => {
           <div className="w-16 h-16 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-4 text-slate-400">
             <UserIcon className="w-8 h-8" />
           </div>
+
+          {/* ========================================================================= */}
+          {/* [STATIC_TEXT] ПОВІДОМЛЕННЯ ДЛЯ НЕАВТОРИЗОВАНОГО КОРИСТУВАЧА               */}
+          {/* ========================================================================= */}
           <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-2">
             Ви не авторизовані
           </h2>
           <p className="text-sm text-slate-600 dark:text-slate-400 mb-6">
             Увійдіть або створіть новий акаунт, щоб керувати профілем та збереженими точками.
           </p>
+
+          {/* ========================================================================= */}
+          {/* [STATIC_TEXT] КНОПКА ПЕРЕХОДУ НА СТОРІНКУ АВТОРИЗАЦІЇ                     */}
+          {/* ========================================================================= */}
           <Link
             to="/auth"
             className="inline-flex items-center justify-center gap-2 w-full py-3 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl shadow transition-all"
@@ -161,7 +169,9 @@ export const Account: React.FC = () => {
 
   return (
     <div className="w-full max-w-3xl mx-auto flex flex-col gap-6 py-4">
-      {/* Заголовок */}
+      {/* ========================================================================= */}
+      {/* [STATIC_TEXT] ШАПКА КАБІНЕТУ КОРИСТУВАЧА                                  */}
+      {/* ========================================================================= */}
       <header className="border-b border-slate-300 dark:border-slate-800 pb-4 flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Мій акаунт</h1>
@@ -179,7 +189,9 @@ export const Account: React.FC = () => {
         </button>
       </header>
 
-      {/* 1. Блок профілю користувача */}
+      {/* ========================================================================= */}
+      {/* [STATIC_TEXT] БЛОК 1: ДАНІ ПРОФІЛЮ ТА АВАТАРКА GRAVATAR                   */}
+      {/* ========================================================================= */}
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 rounded-2xl shadow-sm space-y-6">
         <div className="flex flex-col sm:flex-row items-center sm:items-start gap-5">
           {/* Аватар з Gravatar за адресою пошти */}
@@ -270,7 +282,9 @@ export const Account: React.FC = () => {
         </div>
       </div>
 
-      {/* 2. Блок Статусу PRO або Допомоги проекту */}
+      {/* ========================================================================= */}
+      {/* [STATIC_TEXT] БЛОК 2: СТАТУС PRO / КНОПКА ДОПОМОГИ ПРОЄКТУ                */}
+      {/* ========================================================================= */}
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 rounded-2xl shadow-sm">
         {isPro ? (
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 rounded-xl bg-gradient-to-r from-amber-500/10 via-emerald-500/10 to-transparent border border-amber-500/30">
@@ -319,7 +333,9 @@ export const Account: React.FC = () => {
         )}
       </div>
 
-      {/* 3. Керування збереженими локаціями */}
+      {/* ========================================================================= */}
+      {/* [STATIC_TEXT] БЛОК 3: КЕРУВАННЯ ЗБЕРЕЖЕНИМИ ЛОКАЦІЯМИ                     */}
+      {/* ========================================================================= */}
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 rounded-2xl shadow-sm space-y-4">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="space-y-1">
@@ -365,7 +381,9 @@ export const Account: React.FC = () => {
         </div>
       </div>
 
-      {/* 4. Зміна пароля */}
+      {/* ========================================================================= */}
+      {/* [STATIC_TEXT] БЛОК 4: ФОРМА ЗМІНИ ПАРОЛЯ                                  */}
+      {/* ========================================================================= */}
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 rounded-2xl shadow-sm space-y-4">
         <div className="flex items-center gap-2 pb-2 border-b border-slate-200 dark:border-slate-800">
           <KeyRound className="w-5 h-5 text-emerald-500" />

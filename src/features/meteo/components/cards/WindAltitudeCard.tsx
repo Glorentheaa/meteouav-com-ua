@@ -210,9 +210,11 @@ const WindAltitudeGrid: React.FC<WindAltitudeGridProps> = ({
                   const speedVal = Math.round(levelData.speed)
                   const gustVal = levelData.gusts !== undefined ? Math.round(levelData.gusts) : '—'
 
-                  // Оцінка безпеки вітру та поривів (5 рівнів градієнта)
-                  const windSev = evaluateWind(levelData.speed, warnings.wind)
-                  const gustSev = levelData.gusts !== undefined ? evaluateGusts(levelData.gusts, warnings.gusts) : 'ideal'
+                  // Оцінка безпеки вітру та поривів (5 рівнів градієнта з урахуванням галочок користувача)
+                  const windActive = !warnings.enabled || warnings.enabled.wind !== false
+                  const gustsActive = !warnings.enabled || warnings.enabled.gusts !== false
+                  const windSev = windActive ? evaluateWind(levelData.speed, warnings.wind) : 'ideal'
+                  const gustSev = (gustsActive && levelData.gusts !== undefined) ? evaluateGusts(levelData.gusts, warnings.gusts) : 'ideal'
 
                   return (
                     <div

@@ -15,32 +15,14 @@ import {
 import { ForecastCard } from './ForecastCard'
 import { WeatherIcon } from './WeatherIcon'
 import { AviationWindBarb } from './AviationWindBarb'
-import type { HourlyForecastPoint } from '../../types/meteoData'
+import type { HourlyForecastPoint, WeeklyDayData } from '../../types/meteoData'
 
 interface WeeklyForecastCardProps {
   isSunMoonVisible?: boolean
   chartUrl?: string
   hourly?: HourlyForecastPoint[]
+  weekly?: WeeklyDayData[]
   className?: string
-}
-
-interface WeeklyDayData {
-  dayName: string
-  dateFormatted: string
-  fullDate: string
-  tempMin: number
-  tempMax: number
-  windMin: number
-  windMax: number
-  gustsMax: number
-  directionDeg: number
-  precipMin: number
-  precipMax: number
-  cloudBaseMin: number
-  cloudBaseMax: number
-  cloudCoverPct: number
-  kpMin: number
-  kpMax: number
 }
 
 const UKRAINIAN_DAYS = ['Нд', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб']
@@ -572,12 +554,17 @@ const WeeklyGrid: React.FC<WeeklyGridProps> = ({ days, isExpanded = false }) => 
 export const WeeklyForecastCard: React.FC<WeeklyForecastCardProps> = ({
   isSunMoonVisible = true,
   hourly = [],
+  weekly,
   className = '',
 }) => {
   const [isModalOpen, setIsModalOpen] = useState(false)
 
-  // Формування 7 днів прогнозу
+  // Формування 7 днів прогнозу: пріоритет віддається окремому розрахунку від n8n (weekly)
   const weeklyDays: WeeklyDayData[] = useMemo(() => {
+    if (weekly && weekly.length > 0) {
+      return weekly
+    }
+
     const daysArr: WeeklyDayData[] = []
     const startDate = hourly && hourly.length > 0 ? new Date(hourly[0].timestamp * 1000) : new Date()
 
@@ -643,7 +630,7 @@ export const WeeklyForecastCard: React.FC<WeeklyForecastCardProps> = ({
       }
     }
     return daysArr
-  }, [hourly])
+  }, [weekly, hourly])
 
   // Закриття по Esc
   useEffect(() => {

@@ -3,7 +3,8 @@ import type {
   ForecastDepth,
   ForecastDetail,
   FlightLevels,
-  MeteoWarnings
+  MeteoWarnings,
+  WarningKey,
 } from '../types/meteo'
 
 const SETTINGS_STORAGE_KEY = 'meteo_advanced_settings_v2'
@@ -18,12 +19,26 @@ const DEFAULT_SETTINGS = {
 const DEFAULT_WARNINGS: MeteoWarnings = {
   wind: 12,
   gusts: 13,
+  cloudBase: 300,
+  visibility: 1,
   precip: '>0.1 мм',
   fog: 'висока вірогідність',
   humidity: 98,
-  visibility: 1,
   minTemp: -20,
   maxTemp: 40,
+  kpIndex: 5,
+  enabled: {
+    wind: true,
+    gusts: true,
+    cloudBase: true,
+    visibility: true,
+    precip: true,
+    fog: true,
+    humidity: true,
+    minTemp: true,
+    maxTemp: true,
+    kpIndex: true,
+  },
 }
 
 export function useMeteoSettings() {
@@ -34,7 +49,9 @@ export function useMeteoSettings() {
         const parsed = JSON.parse(saved)
         if (parsed.depth) return parsed.depth
       }
-    } catch {}
+    } catch {
+      // Ігноруємо помилку читання пошкодженого кешу
+    }
     return DEFAULT_SETTINGS.depth
   })
 
@@ -45,7 +62,9 @@ export function useMeteoSettings() {
         const parsed = JSON.parse(saved)
         if (parsed.detail) return parsed.detail
       }
-    } catch {}
+    } catch {
+      // Ігноруємо помилку читання пошкодженого кешу
+    }
     return DEFAULT_SETTINGS.detail
   })
 
@@ -56,7 +75,9 @@ export function useMeteoSettings() {
         const parsed = JSON.parse(saved)
         if (parsed.levels) return parsed.levels
       }
-    } catch {}
+    } catch {
+      // Ігноруємо помилку читання пошкодженого кешу
+    }
     return DEFAULT_SETTINGS.levels
   })
 
@@ -64,9 +85,19 @@ export function useMeteoSettings() {
     try {
       const saved = localStorage.getItem(WARNINGS_STORAGE_KEY)
       if (saved) {
-        return JSON.parse(saved)
+        const parsed = JSON.parse(saved)
+        return {
+          ...DEFAULT_WARNINGS,
+          ...parsed,
+          enabled: {
+            ...DEFAULT_WARNINGS.enabled,
+            ...(parsed.enabled || {}),
+          },
+        }
       }
-    } catch {}
+    } catch {
+      // Ігноруємо помилку читання пошкодженого кешу
+    }
     return DEFAULT_WARNINGS
   })
 
@@ -100,6 +131,16 @@ export function useMeteoSettings() {
     setWarnings((prev) => ({ ...prev, [key]: value }))
   }
 
+  const toggleWarningEnabled = (key: WarningKey, isEnabled: boolean) => {
+    setWarnings((prev) => ({
+      ...prev,
+      enabled: {
+        ...(prev.enabled || {}),
+        [key]: isEnabled,
+      },
+    }))
+  }
+
   const handleFactoryReset = () => {
     setDepth(DEFAULT_SETTINGS.depth)
     setDetail(DEFAULT_SETTINGS.detail)
@@ -108,7 +149,9 @@ export function useMeteoSettings() {
     try {
       localStorage.removeItem(SETTINGS_STORAGE_KEY)
       localStorage.removeItem(WARNINGS_STORAGE_KEY)
-    } catch {}
+    } catch {
+      // Ігноруємо помилку очищення
+    }
   }
 
   const handleSave = () => {
@@ -124,6 +167,7 @@ export function useMeteoSettings() {
     setLevels,
     warnings,
     updateWarning,
+    toggleWarningEnabled,
     showAdvancedSettings,
     setShowAdvancedSettings,
     showWarnings,

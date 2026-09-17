@@ -29,16 +29,12 @@ function checkIsIos(): boolean {
 
 export function usePwaInstall() {
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null)
-  const [isMobileOrTablet, setIsMobileOrTablet] = useState(false)
-  const [isStandalone, setIsStandalone] = useState(false)
-  const [isIos, setIsIos] = useState(false)
+  const [isMobileOrTablet] = useState(checkIsMobileOrTablet)
+  const [isStandalone, setIsStandalone] = useState(checkIsStandalone)
+  const [isIos] = useState(checkIsIos)
   const [showIosGuide, setShowIosGuide] = useState(false)
 
   useEffect(() => {
-    setIsMobileOrTablet(checkIsMobileOrTablet())
-    setIsStandalone(checkIsStandalone())
-    setIsIos(checkIsIos())
-
     const handleBeforeInstallPrompt = (e: Event) => {
       e.preventDefault()
       setDeferredPrompt(e as BeforeInstallPromptEvent)

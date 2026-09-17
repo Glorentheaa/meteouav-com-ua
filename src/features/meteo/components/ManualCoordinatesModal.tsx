@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import {
   X,
   Navigation,
@@ -18,7 +18,6 @@ import {
   parseCoordinatePair,
   parseSingleCoordinate,
   formatMGRS,
-  type ParsedCoordinates,
   type CoordinateFormat,
 } from '../utils/coordParser'
 import type { SavedLocation } from '../types/location'
@@ -97,117 +96,106 @@ export const ManualCoordinatesModal: React.FC<ManualCoordinatesModalProps> = ({
   const [latInput, setLatInput] = useState(initialLat.toString())
   const [lonInput, setLonInput] = useState(initialLon.toString())
 
-  // Розпізнані координати
-  const [parsedCoords, setParsedCoords] = useState<ParsedCoordinates | null>(null)
-
   const [customName, setCustomName] = useState('')
   const [saveToList, setSaveToList] = useState(true)
-  const [settlement, setSettlement] = useState<string>('')
+  const [fetchedSettlement, setFetchedSettlement] = useState<string>('')
   const [isLoadingGeo, setIsLoadingGeo] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [customError, setCustomError] = useState<string | null>(null)
   const [copiedKey, setCopiedKey] = useState<string | null>(null)
 
-  // Парсинг при зміні єдиного рядка
-  useEffect(() => {
+  // Обчислення розпізнаних координат та помилки валідації без каскадних рендерів
+  const { parsedCoords, parseError } = useMemo(() => {
     if (inputMode === 'unified') {
       const trimmed = unifiedInput.trim()
       if (!trimmed) {
-        setParsedCoords(null)
-        setError(null)
-        return
+        return { parsedCoords: null, parseError: null }
       }
 
       const result = parseCoordinatePair(trimmed)
       if (result) {
-        setParsedCoords(result)
-        setError(null)
-      } else {
-        setParsedCoords(null)
-        if (trimmed.length > 5) {
-          setError(
-            'Формат не розпізнано. Перевірте ввід: підтримуються MGRS (напр. 36TXU 57100 01763), UTM, СК-42, DD (47.85, 35.10), DMS, або посилання карт.'
-          )
-        }
+        return { parsedCoords: result, parseError: null }
+      }
+
+      return {
+        parsedCoords: null,
+        parseError:
+          trimmed.length > 5
+            ? 'Формат не розпізнано. Перевірте ввід: підтримуються MGRS (напр. 36TXU 57100 01763), UTM, СК-42, DD (47.85, 35.10), DMS, або посилання карт.'
+            : null,
       }
     }
-  }, [unifiedInput, inputMode])
 
-  // Парсинг при зміні окремих полів
-  useEffect(() => {
-    if (inputMode === 'split') {
-      const trimmedLat = latInput.trim()
-      const trimmedLon = lonInput.trim()
+    // inputMode === 'split'
+    const trimmedLat = latInput.trim()
+    const trimmedLon = lonInput.trim()
 
-      if (!trimmedLat && !trimmedLon) {
-        setParsedCoords(null)
-        setError(null)
-        return
+    if (!trimmedLat && !trimmedLon) {
+      return { parsedCoords: null, parseError: null }
+    }
+
+    // Якщо користувач вставив повний MGRS/рядок у поле широти
+    if (trimmedLat && !trimmedLon) {
+      const fullParsed = parseCoordinatePair(trimmedLat)
+      if (fullParsed && fullParsed.rawFormat !== 'DD') {
+        return { parsedCoords: fullParsed, parseError: null }
       }
+      return { parsedCoords: null, parseError: null }
+    }
 
-      // Якщо користувач вставив повний MGRS/рядок у поле широти
-      if (trimmedLat) {
-        const fullParsed = parseCoordinatePair(trimmedLat)
-        if (fullParsed && fullParsed.rawFormat !== 'DD') {
-          setParsedCoords(fullParsed)
-          setLatInput(fullParsed.lat.toString())
-          setLonInput(fullParsed.lon.toString())
-          setError(null)
-          return
-        }
+    if (!trimmedLat || !trimmedLon) {
+      return { parsedCoords: null, parseError: null }
+    }
+
+    const lat = parseSingleCoordinate(trimmedLat, false)
+    const lon = parseSingleCoordinate(trimmedLon, true)
+
+    if (lat !== null && lon !== null) {
+      const full = parseCoordinatePair(`${lat}, ${lon}`)
+      if (full) {
+        return { parsedCoords: full, parseError: null }
       }
-
-      if (!trimmedLat || !trimmedLon) {
-        setParsedCoords(null)
-        return
-      }
-
-      const lat = parseSingleCoordinate(trimmedLat, false)
-      const lon = parseSingleCoordinate(trimmedLon, true)
-
-      if (lat !== null && lon !== null) {
-        const full = parseCoordinatePair(`${lat}, ${lon}`)
-        if (full) {
-          setParsedCoords(full)
-          setError(null)
-        } else {
-          setParsedCoords({
-            lat: parseFloat(lat.toFixed(6)),
-            lon: parseFloat(lon.toFixed(6)),
-            rawFormat: 'DD',
-            formattedText: `${lat.toFixed(5)}° N, ${lon.toFixed(5)}° E`,
-          })
-          setError(null)
-        }
-      } else {
-        setParsedCoords(null)
-        setError('Некоректні координати в полях широти/довготи')
+      return {
+        parsedCoords: {
+          lat: parseFloat(lat.toFixed(6)),
+          lon: parseFloat(lon.toFixed(6)),
+          rawFormat: 'DD' as const,
+          formattedText: `${lat.toFixed(5)}° N, ${lon.toFixed(5)}° E`,
+        },
+        parseError: null,
       }
     }
-  }, [latInput, lonInput, inputMode])
+
+    return {
+      parsedCoords: null,
+      parseError: 'Некоректні координати в полях широти/довготи',
+    }
+  }, [inputMode, unifiedInput, latInput, lonInput])
+
+  const error = customError || parseError
 
   // Розрахунок тактичного сектора
   const sectorInfo = parsedCoords ? snapToSector(parsedCoords.lat, parsedCoords.lon) : null
+  const settlement = sectorInfo ? fetchedSettlement : ''
 
   // Дебаунс для геокодування назви населеного пункту
   useEffect(() => {
     if (!sectorInfo) {
-      setSettlement('')
       return
     }
 
     let isMounted = true
-    setIsLoadingGeo(true)
 
     const timer = setTimeout(async () => {
+      setIsLoadingGeo(true)
       try {
         const name = await fetchNearestSettlement(sectorInfo.lat, sectorInfo.lon)
         if (isMounted) {
-          setSettlement(name)
+          setFetchedSettlement(name)
           setIsLoadingGeo(false)
         }
       } catch {
         if (isMounted) {
-          setSettlement(`Сектор ${sectorInfo.sectorId}`)
+          setFetchedSettlement(`Сектор ${sectorInfo.sectorId}`)
           setIsLoadingGeo(false)
         }
       }
@@ -217,7 +205,7 @@ export const ManualCoordinatesModal: React.FC<ManualCoordinatesModalProps> = ({
       isMounted = false
       clearTimeout(timer)
     }
-  }, [sectorInfo?.lat, sectorInfo?.lon])
+  }, [sectorInfo])
 
   if (!isOpen) return null
 
@@ -249,10 +237,10 @@ export const ManualCoordinatesModal: React.FC<ManualCoordinatesModalProps> = ({
     if (Math.abs(swappedLat) <= 90 && Math.abs(swappedLon) <= 180) {
       const updated = parseCoordinatePair(`${swappedLat}, ${swappedLon}`)
       if (updated) {
-        setParsedCoords(updated)
         setUnifiedInput(`${swappedLat}, ${swappedLon}`)
         setLatInput(swappedLat.toString())
         setLonInput(swappedLon.toString())
+        setCustomError(null)
       }
     }
   }
@@ -260,7 +248,7 @@ export const ManualCoordinatesModal: React.FC<ManualCoordinatesModalProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (!parsedCoords || !sectorInfo) {
-      setError('Будь ласка, введіть коректні координати')
+      setCustomError('Будь ласка, введіть коректні координати')
       return
     }
 
@@ -461,11 +449,11 @@ export const ManualCoordinatesModal: React.FC<ManualCoordinatesModalProps> = ({
                   </span>
                   <span
                     className={`text-[10px] font-mono uppercase px-2 py-0.5 rounded-full font-bold border ${
-                      FORMAT_CONFIG[parsedCoords.rawFormat]?.badgeClass ||
+                      FORMAT_CONFIG[parsedCoords.rawFormat as CoordinateFormat]?.badgeClass ||
                       'bg-slate-500/20 text-slate-300 border-slate-500/30'
                     }`}
                   >
-                    {FORMAT_CONFIG[parsedCoords.rawFormat]?.label || parsedCoords.rawFormat}
+                    {FORMAT_CONFIG[parsedCoords.rawFormat as CoordinateFormat]?.label || parsedCoords.rawFormat}
                   </span>
                 </div>
 

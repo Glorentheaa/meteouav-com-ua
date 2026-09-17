@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react'
+import React, { useMemo, useState, useCallback } from 'react'
 import { Activity } from 'lucide-react'
 import { ForecastCard } from './ForecastCard'
 import type { HourlyForecastPoint, WarningSeverity } from '../../types/meteoData'
@@ -100,6 +100,17 @@ function getSectorColor(status: DialSectorStatus): { fill: string; stroke: strin
         stroke: 'stroke-slate-200 dark:stroke-slate-700/40',
       }
   }
+}
+
+// Ранжування статусів небезпеки
+const SEVERITY_RANK: Record<DialSectorStatus, number> = {
+  danger: 5,
+  warning: 4,
+  attention: 3,
+  favorable: 2,
+  ideal: 1,
+  past: 0,
+  no_data: -1,
 }
 
 /**
@@ -412,125 +423,117 @@ export const FlightWindowsCard: React.FC<FlightWindowsCardProps> = ({
     return firstForecastHour < 12
   }, [firstForecastHour])
 
-  // Ранжування статусів небезпеки
-  const severityRank: Record<DialSectorStatus, number> = {
-    danger: 5,
-    warning: 4,
-    attention: 3,
-    favorable: 2,
-    ideal: 1,
-    past: 0,
-    no_data: -1,
-  }
-
   // Генерація секторів для 12-годинного блоку
-  const buildHalfDaySectors = (targetDateStr: string, startBaseHour: number, isToday: boolean) => {
-    const sectorCount = Math.max(1, Math.floor(12 / detailHours))
-    const spanAngle = 360 / sectorCount
-    const sectors: DialSectorData[] = []
+  const buildHalfDaySectors = useCallback(
+    (targetDateStr: string, startBaseHour: number, isToday: boolean) => {
+      const sectorCount = Math.max(1, Math.floor(12 / detailHours))
+      const spanAngle = 360 / sectorCount
+      const sectors: DialSectorData[] = []
 
-    for (let s = 0; s < sectorCount; s++) {
-      const segStart = startBaseHour + s * detailHours
-      const segEnd = segStart + detailHours
-      const startAngle = -90 + s * spanAngle
-      const endAngle = startAngle + spanAngle
+      for (let s = 0; s < sectorCount; s++) {
+        const segStart = startBaseHour + s * detailHours
+        const segEnd = segStart + detailHours
+        const startAngle = -90 + s * spanAngle
+        const endAngle = startAngle + spanAngle
 
-      const timeRangeStr =
-        detailHours === 1
-          ? `${String(segStart).padStart(2, '0')}:00`
-          : `${String(segStart).padStart(2, '0')}:00 - ${String(segEnd).padStart(2, '0')}:00`
+        const timeRangeStr =
+          detailHours === 1
+            ? `${String(segStart).padStart(2, '0')}:00`
+            : `${String(segStart).padStart(2, '0')}:00 - ${String(segEnd).padStart(2, '0')}:00`
 
-      // Перевіряємо чи цей сектор повністю в минулому (тільки для Сьогодні)
-      if (isToday && segEnd <= firstForecastHour) {
+        // Перевіряємо чи цей сектор повністю в минулому (тільки для Сьогодні)
+        if (isToday && segEnd <= firstForecastHour) {
+          sectors.push({
+            id: `seg-${targetDateStr}-${segStart}-${segEnd}`,
+            startHour: segStart,
+            endHour: segEnd,
+            timeRangeStr,
+            status: 'past',
+            issues: ['Час вже минув'],
+            startAngle,
+            endAngle,
+          })
+          continue
+        }
+
+        // Шукаємо точки прогнозу для даного часового проміжку
+        const matchingPoints = hourly.filter((p) => {
+          if (p.fullDate !== targetDateStr) return false
+          const h = parseInt(p.time.split(':')[0], 10)
+          return h >= segStart && h < segEnd
+        })
+
+        if (matchingPoints.length === 0) {
+          sectors.push({
+            id: `seg-${targetDateStr}-${segStart}-${segEnd}`,
+            startHour: segStart,
+            endHour: segEnd,
+            timeRangeStr,
+            status: 'no_data',
+            issues: ['Поза межами прогнозу'],
+            startAngle,
+            endAngle,
+          })
+          continue
+        }
+
+        // Визначаємо найгірший статус серед точок сектора
+        let worstStatus: DialSectorStatus = 'ideal'
+        const collectedIssues: string[] = []
+
+        for (const pt of matchingPoints) {
+          const evalRes = evaluateHour(pt, warnings, maxFlightLevelM)
+          const statusMap: Record<WarningSeverity, DialSectorStatus> = {
+            danger: 'danger',
+            warning: 'warning',
+            attention: 'attention',
+            favorable: 'favorable',
+            ideal: 'ideal',
+            safe: 'ideal',
+          }
+          const mappedStatus = statusMap[evalRes.severity] || 'ideal'
+          if (SEVERITY_RANK[mappedStatus] > SEVERITY_RANK[worstStatus]) {
+            worstStatus = mappedStatus
+          }
+          if (evalRes.issues.length > 0) {
+            collectedIssues.push(...evalRes.issues)
+          }
+        }
+
         sectors.push({
           id: `seg-${targetDateStr}-${segStart}-${segEnd}`,
           startHour: segStart,
           endHour: segEnd,
           timeRangeStr,
-          status: 'past',
-          issues: ['Час вже минув'],
+          status: worstStatus,
+          issues: Array.from(new Set(collectedIssues)),
           startAngle,
           endAngle,
         })
-        continue
       }
 
-      // Шукаємо точки прогнозу для даного часового проміжку
-      const matchingPoints = hourly.filter((p) => {
-        if (p.fullDate !== targetDateStr) return false
-        const h = parseInt(p.time.split(':')[0], 10)
-        return h >= segStart && h < segEnd
-      })
-
-      if (matchingPoints.length === 0) {
-        sectors.push({
-          id: `seg-${targetDateStr}-${segStart}-${segEnd}`,
-          startHour: segStart,
-          endHour: segEnd,
-          timeRangeStr,
-          status: 'no_data',
-          issues: ['Поза межами прогнозу'],
-          startAngle,
-          endAngle,
-        })
-        continue
-      }
-
-      // Визначаємо найгірший статус серед точок сектора
-      let worstStatus: DialSectorStatus = 'ideal'
-      const collectedIssues: string[] = []
-
-      for (const pt of matchingPoints) {
-        const evalRes = evaluateHour(pt, warnings, maxFlightLevelM)
-        const statusMap: Record<WarningSeverity, DialSectorStatus> = {
-          danger: 'danger',
-          warning: 'warning',
-          attention: 'attention',
-          favorable: 'favorable',
-          ideal: 'ideal',
-          safe: 'ideal',
-        }
-        const mappedStatus = statusMap[evalRes.severity] || 'ideal'
-        if (severityRank[mappedStatus] > severityRank[worstStatus]) {
-          worstStatus = mappedStatus
-        }
-        if (evalRes.issues.length > 0) {
-          collectedIssues.push(...evalRes.issues)
-        }
-      }
-
-      sectors.push({
-        id: `seg-${targetDateStr}-${segStart}-${segEnd}`,
-        startHour: segStart,
-        endHour: segEnd,
-        timeRangeStr,
-        status: worstStatus,
-        issues: Array.from(new Set(collectedIssues)),
-        startAngle,
-        endAngle,
-      })
-    }
-
-    return sectors
-  }
+      return sectors
+    },
+    [hourly, detailHours, firstForecastHour, warnings, maxFlightLevelM]
+  )
 
   // Сьогодні: Ніч/Ранок (00:00 - 12:00) та День/Вечір (12:00 - 24:00)
   const todayAmSectors = useMemo(() => {
     return buildHalfDaySectors(todayDateStr, 0, true)
-  }, [hourly, todayDateStr, firstForecastHour, detailHours, warnings, maxFlightLevelM])
+  }, [buildHalfDaySectors, todayDateStr])
 
   const todayPmSectors = useMemo(() => {
     return buildHalfDaySectors(todayDateStr, 12, true)
-  }, [hourly, todayDateStr, firstForecastHour, detailHours, warnings, maxFlightLevelM])
+  }, [buildHalfDaySectors, todayDateStr])
 
   // Завтра: Ніч/Ранок (00:00 - 12:00) та День/Вечір (12:00 - 24:00)
   const tomorrowAmSectors = useMemo(() => {
     return buildHalfDaySectors(tomorrowDateStr, 0, false)
-  }, [hourly, tomorrowDateStr, firstForecastHour, detailHours, warnings, maxFlightLevelM])
+  }, [buildHalfDaySectors, tomorrowDateStr])
 
   const tomorrowPmSectors = useMemo(() => {
     return buildHalfDaySectors(tomorrowDateStr, 12, false)
-  }, [hourly, tomorrowDateStr, firstForecastHour, detailHours, warnings, maxFlightLevelM])
+  }, [buildHalfDaySectors, tomorrowDateStr])
 
   // Номери годин для класичного циферблата
   const amHourNumbers = ['12', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11']

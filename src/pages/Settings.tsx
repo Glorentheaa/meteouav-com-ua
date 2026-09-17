@@ -165,7 +165,9 @@ export const Settings: React.FC = () => {
 
   return (
     <div className="w-full max-w-3xl mx-auto flex flex-col gap-6 py-4">
-      {/* Шапка */}
+      {/* ========================================================================= */}
+      {/* [STATIC_TEXT] SETTINGS: HEADER                                            */}
+      {/* ========================================================================= */}
       <header className="border-b border-slate-300 dark:border-slate-800 pb-4 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <Link
@@ -203,7 +205,9 @@ export const Settings: React.FC = () => {
         </div>
       )}
 
-      {/* Форма додавання нової локації */}
+      {/* ========================================================================= */}
+      {/* [STATIC_TEXT] SETTINGS: ADD_LOCATION_FORM                                 */}
+      {/* ========================================================================= */}
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 rounded-2xl shadow-sm">
         <h2 className="text-base font-bold text-slate-900 dark:text-white mb-2 flex items-center gap-2">
           <Plus className="w-4 h-4 text-emerald-500" />
@@ -239,7 +243,9 @@ export const Settings: React.FC = () => {
         </form>
       </div>
 
-      {/* Закріплені локації */}
+      {/* ========================================================================= */}
+      {/* [STATIC_TEXT] SETTINGS: PINNED_LOCATIONS                                   */}
+      {/* ========================================================================= */}
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 rounded-2xl shadow-sm space-y-4">
         <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
           <div className="flex items-center gap-2">
@@ -326,7 +332,9 @@ export const Settings: React.FC = () => {
         </div>
       </div>
 
-      {/* Збережені локації */}
+      {/* ========================================================================= */}
+      {/* [STATIC_TEXT] SETTINGS: ALL_SAVED_LOCATIONS                               */}
+      {/* ========================================================================= */}
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 rounded-2xl shadow-sm space-y-4">
         <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
           <div className="flex items-center gap-2">

@@ -5,15 +5,30 @@ export type FlightLevels = '300' | '500' | '800' | '3000'
 export type PrecipOption = '>0.1 мм' | '>0.3 мм' | 'вимкнути'
 export type FogOption = 'висока вірогідність' | 'мала вірогідність' | 'вимкнути'
 
+export type WarningKey =
+  | 'wind'
+  | 'gusts'
+  | 'cloudBase'
+  | 'visibility'
+  | 'precip'
+  | 'fog'
+  | 'humidity'
+  | 'minTemp'
+  | 'maxTemp'
+  | 'kpIndex'
+
 export interface MeteoWarnings {
   wind: number
   gusts: number
+  cloudBase: number
+  visibility: number
   precip: PrecipOption | string
   fog: FogOption | string
   humidity: number
-  visibility: number
   minTemp: number
   maxTemp: number
+  kpIndex: number
+  enabled?: Partial<Record<WarningKey, boolean>>
 }
 
 export interface MeteoBlocksState {

@@ -13,7 +13,16 @@
 
 import * as mgrsModule from 'mgrs'
 
-const mgrsRaw: any = mgrsModule
+interface MgrsLib {
+  forward?: (ll: [number, number], accuracy?: number) => string
+  toPoint?: (mgrsStr: string) => [number, number]
+  default?: {
+    forward?: (ll: [number, number], accuracy?: number) => string
+    toPoint?: (mgrsStr: string) => [number, number]
+  }
+}
+
+const mgrsRaw = mgrsModule as unknown as MgrsLib
 const mgrsForward = mgrsRaw.forward || mgrsRaw.default?.forward
 const mgrsToPoint = mgrsRaw.toPoint || mgrsRaw.default?.toPoint
 
@@ -81,6 +90,9 @@ export function isValidRange(lat: number, lon: number): boolean {
  */
 export function formatMGRS(lat: number, lon: number): { formatted: string; raw: string } {
   try {
+    if (!mgrsForward) {
+      return { formatted: 'N/A', raw: 'N/A' }
+    }
     const raw = mgrsForward([lon, lat], 5) // 5 = точність 1м (10 цифр)
     // raw виглядає як: "36TXU5710101764"
     const match = raw.match(/^([0-9]{1,2}[A-Z])([A-Z]{2})([0-9]{5})([0-9]{5})$/)
@@ -507,6 +519,9 @@ export function tryParseMGRS(text: string): ParsedCoordinates | null {
   }
 
   try {
+    if (!mgrsToPoint) {
+      return null
+    }
     const point = mgrsToPoint(stripped) // returns [lon, lat]
     if (point && Array.isArray(point) && point.length === 2) {
       const lon = point[0]

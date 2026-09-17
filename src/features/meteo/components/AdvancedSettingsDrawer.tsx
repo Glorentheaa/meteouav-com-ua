@@ -8,6 +8,7 @@ import type {
   ForecastDetail,
   FlightLevels,
   MeteoWarnings,
+  WarningKey,
 } from '../types/meteo'
 
 interface AdvancedSettingsDrawerProps {
@@ -19,6 +20,7 @@ interface AdvancedSettingsDrawerProps {
   setLevels: (levels: FlightLevels) => void
   warnings: MeteoWarnings
   updateWarning: <K extends keyof MeteoWarnings>(key: K, value: MeteoWarnings[K]) => void
+  toggleWarningEnabled?: (key: WarningKey, enabled: boolean) => void
   showWarnings: boolean
   setShowWarnings: (show: boolean | ((prev: boolean) => boolean)) => void
   onFactoryReset: () => void
@@ -38,6 +40,7 @@ export const AdvancedSettingsDrawer: React.FC<AdvancedSettingsDrawerProps> = ({
   setLevels,
   warnings,
   updateWarning,
+  toggleWarningEnabled,
   showWarnings,
   setShowWarnings,
   onFactoryReset,
@@ -298,6 +301,7 @@ export const AdvancedSettingsDrawer: React.FC<AdvancedSettingsDrawerProps> = ({
       <WarningsPanel
         warnings={warnings}
         updateWarning={updateWarning}
+        toggleWarningEnabled={toggleWarningEnabled}
         isOpen={showWarnings}
         onToggle={() => setShowWarnings((prev) => !prev)}
       />
