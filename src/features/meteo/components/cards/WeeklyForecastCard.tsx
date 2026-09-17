@@ -14,12 +14,14 @@ import {
 } from 'lucide-react'
 import { ForecastCard } from './ForecastCard'
 import { WeatherIcon } from './WeatherIcon'
+import { AviationWindBarb } from './AviationWindBarb'
 import type { HourlyForecastPoint } from '../../types/meteoData'
 
 interface WeeklyForecastCardProps {
   isSunMoonVisible?: boolean
   chartUrl?: string
   hourly?: HourlyForecastPoint[]
+  className?: string
 }
 
 interface WeeklyDayData {
@@ -67,12 +69,6 @@ function generateSmoothSplinePath(points: { x: number; y: number }[]): string {
   return d
 }
 
-function getCompassDirection(deg: number): string {
-  const directions = ['Пн', 'Пн-Сх', 'Сх', 'Пд-Сх', 'Пд', 'Пд-Зх', 'Зх', 'Пн-Зх']
-  const index = Math.round(((deg % 360) + 360) % 360 / 45) % 8
-  return directions[index]
-}
-
 interface WeeklyGridProps {
   days: WeeklyDayData[]
   isExpanded?: boolean
@@ -83,12 +79,20 @@ const WeeklyGrid: React.FC<WeeklyGridProps> = ({ days, isExpanded = false }) => 
   const [canScrollLeft, setCanScrollLeft] = useState(false)
   const [canScrollRight, setCanScrollRight] = useState(true)
 
-  const colWidth = isExpanded ? 130 : 100
-  const leftColWidth = isExpanded ? 'w-[150px] sm:w-[165px]' : 'w-[125px] sm:w-[135px]'
-  const totalWidth = days.length * colWidth
+  // Тільки колонка іконок лишається sticky ліворуч
+  const iconColWidth = isExpanded ? 'w-[44px] sm:w-[48px]' : 'w-[36px] sm:w-[40px]'
+  // Текстовий стовпчик параметрів (скролиться разом із даними)
+  const labelColWidth = isExpanded ? 150 : 130
+  const dayColWidth = isExpanded ? 124 : 94
+  const totalScrollWidth = labelColWidth + days.length * dayColWidth
 
+  const rowHeightHeader = isExpanded ? 'h-14' : 'h-11'
   const rowHeightTemp = isExpanded ? 46 : 38
+  const rowHeightWind = isExpanded ? 'h-12' : 'h-10'
+  const rowHeightDir = isExpanded ? 'h-12' : 'h-10'
   const rowHeightPrecip = isExpanded ? 44 : 36
+  const rowHeightClouds = isExpanded ? 'h-11' : 'h-9'
+  const rowHeightKp = isExpanded ? 'h-10' : 'h-8'
 
   const checkScroll = () => {
     if (!scrollRef.current) return
@@ -108,7 +112,7 @@ const WeeklyGrid: React.FC<WeeklyGridProps> = ({ days, isExpanded = false }) => 
 
   const handleScroll = (direction: 'left' | 'right') => {
     if (!scrollRef.current) return
-    const scrollAmount = direction === 'left' ? -colWidth * 2 : colWidth * 2
+    const scrollAmount = direction === 'left' ? -dayColWidth * 2 : dayColWidth * 2
     scrollRef.current.scrollBy({ left: scrollAmount, behavior: 'smooth' })
   }
 
@@ -128,7 +132,8 @@ const WeeklyGrid: React.FC<WeeklyGridProps> = ({ days, isExpanded = false }) => 
     const usableH = rowHeightTemp - padTop - padBottom
 
     const coords = days.map((d, i) => {
-      const x = i * colWidth + colWidth / 2
+      // Зміщення на labelColWidth, оскільки назва параметра скролиться
+      const x = labelColWidth + i * dayColWidth + dayColWidth / 2
       const mean = (d.tempMin + d.tempMax) / 2
       const norm = (mean - minT) / tRange
       const y = padTop + (1 - norm) * usableH
@@ -138,7 +143,7 @@ const WeeklyGrid: React.FC<WeeklyGridProps> = ({ days, isExpanded = false }) => 
     const path = generateSmoothSplinePath(coords)
     const areaPath = `${path} L ${coords[coords.length - 1].x} ${rowHeightTemp} L ${coords[0].x} ${rowHeightTemp} Z`
     return { path, areaPath }
-  }, [days, colWidth, rowHeightTemp, isExpanded])
+  }, [days, labelColWidth, dayColWidth, rowHeightTemp, isExpanded])
 
   // 2. Крива опадів
   const precipSpline = useMemo(() => {
@@ -151,7 +156,7 @@ const WeeklyGrid: React.FC<WeeklyGridProps> = ({ days, isExpanded = false }) => 
     const usableH = rowHeightPrecip - padTop - padBottom
 
     const coords = days.map((d, i) => {
-      const x = i * colWidth + colWidth / 2
+      const x = labelColWidth + i * dayColWidth + dayColWidth / 2
       const norm = Math.min(1, d.precipMax / maxP)
       const y = padTop + (1 - norm) * usableH
       return { x, y }
@@ -160,10 +165,14 @@ const WeeklyGrid: React.FC<WeeklyGridProps> = ({ days, isExpanded = false }) => 
     const path = generateSmoothSplinePath(coords)
     const areaPath = `${path} L ${coords[coords.length - 1].x} ${rowHeightPrecip} L ${coords[0].x} ${rowHeightPrecip} Z`
     return { path, areaPath }
-  }, [days, colWidth, rowHeightPrecip])
+  }, [days, labelColWidth, dayColWidth, rowHeightPrecip])
 
   return (
-    <div className="relative w-full flex flex-col rounded-lg border border-slate-200 dark:border-slate-700/80 bg-white dark:bg-slate-900/90 shadow-sm dark:shadow-inner overflow-hidden select-none">
+    <div
+      className={`relative flex flex-col rounded-lg border border-slate-200 dark:border-slate-700/80 bg-white dark:bg-slate-900/90 shadow-sm dark:shadow-inner overflow-hidden select-none ${
+        isExpanded ? 'w-fit max-w-full' : 'w-full'
+      }`}
+    >
       {/* Кнопки горизонтальної навігації */}
       <button
         type="button"
@@ -171,7 +180,7 @@ const WeeklyGrid: React.FC<WeeklyGridProps> = ({ days, isExpanded = false }) => 
         disabled={!canScrollLeft}
         aria-label="Прокрутити вліво"
         className={`absolute ${
-          isExpanded ? 'left-[154px] sm:left-[170px]' : 'left-[128px] sm:left-[138px]'
+          isExpanded ? 'left-[46px] sm:left-[52px]' : 'left-[38px] sm:left-[42px]'
         } top-1/2 -translate-y-1/2 z-30 p-1 rounded-full bg-white/95 dark:bg-slate-800/90 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-600/70 shadow-md hover:bg-slate-100 dark:hover:bg-slate-700 transition-all ${
           canScrollLeft ? 'opacity-90 hover:scale-110 cursor-pointer' : 'opacity-0 pointer-events-none'
         }`}
@@ -197,96 +206,84 @@ const WeeklyGrid: React.FC<WeeklyGridProps> = ({ days, isExpanded = false }) => 
         className="overflow-x-auto overflow-y-hidden scrollbar-thin scrollbar-thumb-slate-300 dark:scrollbar-thumb-slate-600/70 scrollbar-track-transparent flex"
         style={{ scrollBehavior: 'smooth' }}
       >
-        {/* ================= 1. ФІКСОВАНА ЛІВА КОЛОНКА ПАРАМЕТРІВ (STICKY) ================= */}
+        {/* ================= 1. ФІКСОВАНА ЛІВА КОЛОНКА (ЛИШЕ ІКОНКИ) ================= */}
         <div
-          className={`sticky left-0 z-20 shrink-0 bg-white dark:bg-slate-900/95 backdrop-blur-md border-r border-slate-200 dark:border-slate-700/80 shadow-xs flex flex-col ${leftColWidth}`}
+          className={`sticky left-0 z-20 shrink-0 bg-white dark:bg-slate-900/95 backdrop-blur-md border-r border-slate-200 dark:border-slate-700/80 shadow-xs flex flex-col items-center ${iconColWidth}`}
         >
-          {/* Рядок 1: День / Дата */}
+          {/* Шапка: іконка календаря */}
           <div
-            className={`flex items-center px-2.5 font-bold border-b border-slate-200 dark:border-slate-700/60 bg-slate-100 dark:bg-slate-800/80 gap-2 ${
-              isExpanded ? 'h-14 text-xs sm:text-sm' : 'h-11 text-[11px]'
-            }`}
+            className={`w-full flex items-center justify-center border-b border-slate-200 dark:border-slate-700/60 bg-slate-100 dark:bg-slate-800/80 ${rowHeightHeader}`}
           >
-            <CalendarDays className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
-            <span className="text-slate-800 dark:text-slate-200 truncate">День / Дата</span>
+            <CalendarDays className="w-4 h-4 text-emerald-500" />
           </div>
 
-          {/* Рядок 2: Температура, °C */}
+          {/* Іконка температури */}
           <div
-            className={`flex items-center px-2.5 font-semibold text-slate-700 dark:text-slate-300 border-b border-slate-200 dark:border-slate-700/60 bg-white dark:bg-transparent gap-2 ${
-              isExpanded ? 'h-[46px] text-xs' : 'h-[38px] text-[10.5px] sm:text-[11px]'
-            }`}
+            className="w-full flex items-center justify-center border-b border-slate-200 dark:border-slate-700/60 bg-white dark:bg-transparent"
+            style={{ height: `${rowHeightTemp}px` }}
           >
-            <Thermometer className="w-3.5 h-3.5 text-orange-500 shrink-0" />
-            <span className="truncate">Температура, °C</span>
+            <Thermometer className="w-4 h-4 text-orange-500" />
           </div>
 
-          {/* Рядок 3: Вітер, м/с */}
+          {/* Іконка вітру */}
           <div
-            className={`flex items-center px-2.5 font-semibold text-slate-700 dark:text-slate-300 border-b border-slate-200 dark:border-slate-700/60 bg-slate-50/50 dark:bg-transparent gap-2 ${
-              isExpanded ? 'h-12 text-xs' : 'h-10 text-[10.5px] sm:text-[11px]'
-            }`}
+            className={`w-full flex items-center justify-center border-b border-slate-200 dark:border-slate-700/60 bg-slate-50/50 dark:bg-transparent ${rowHeightWind}`}
           >
-            <Wind className="w-3.5 h-3.5 text-cyan-600 dark:text-cyan-400 shrink-0" />
-            <span className="truncate">Вітер, м/с</span>
+            <Wind className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />
           </div>
 
-          {/* Рядок 4: Напрям вітру */}
+          {/* Іконка напрямку вітру */}
           <div
-            className={`flex items-center px-2.5 font-semibold text-slate-700 dark:text-slate-300 border-b border-slate-200 dark:border-slate-700/60 bg-white dark:bg-transparent gap-2 ${
-              isExpanded ? 'h-11 text-xs' : 'h-9 text-[10.5px] sm:text-[11px]'
-            }`}
+            className={`w-full flex items-center justify-center border-b border-slate-200 dark:border-slate-700/60 bg-white dark:bg-transparent ${rowHeightDir}`}
           >
-            <Navigation className="w-3.5 h-3.5 text-indigo-500 dark:text-indigo-400 shrink-0" />
-            <span className="truncate">Напрям вітру</span>
+            <Navigation className="w-3.5 h-3.5 text-cyan-600 dark:text-cyan-400" />
           </div>
 
-          {/* Рядок 5: Опади, мм */}
+          {/* Іконка опадів */}
           <div
-            className={`flex items-center px-2.5 font-semibold text-slate-700 dark:text-slate-300 border-b border-slate-200 dark:border-slate-700/60 bg-slate-50/50 dark:bg-transparent gap-2 ${
-              isExpanded ? 'h-12 text-xs' : 'h-10 text-[10.5px] sm:text-[11px]'
-            }`}
+            className="w-full flex items-center justify-center border-b border-slate-200 dark:border-slate-700/60 bg-slate-50/50 dark:bg-transparent"
+            style={{ height: `${rowHeightPrecip}px` }}
           >
-            <Droplets className="w-3.5 h-3.5 text-blue-500 dark:text-blue-400 shrink-0" />
-            <span className="truncate">Опади, мм</span>
+            <Droplets className="w-4 h-4 text-blue-500 dark:text-blue-400" />
           </div>
 
-          {/* Рядок 6: Кромка хмар, м */}
+          {/* Іконка хмарності */}
           <div
-            className={`flex items-center px-2.5 font-semibold text-slate-700 dark:text-slate-300 border-b border-slate-200 dark:border-slate-700/60 bg-white dark:bg-transparent gap-2 ${
-              isExpanded ? 'h-12 text-xs' : 'h-10 text-[10.5px] sm:text-[11px]'
-            }`}
+            className={`w-full flex items-center justify-center border-b border-slate-200 dark:border-slate-700/60 bg-white dark:bg-transparent ${rowHeightClouds}`}
           >
-            <Cloud className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400 shrink-0" />
-            <span className="truncate">Кромка хмар, м</span>
+            <Cloud className="w-4 h-4 text-slate-500 dark:text-slate-400" />
           </div>
 
-          {/* Рядок 7: КР-Індекс */}
+          {/* Іконка геомагнітної активності */}
           <div
-            className={`flex items-center px-2.5 font-semibold text-slate-700 dark:text-slate-300 bg-slate-50/50 dark:bg-transparent gap-2 ${
-              isExpanded ? 'h-10 text-xs' : 'h-8 text-[10.5px] sm:text-[11px]'
-            }`}
+            className={`w-full flex items-center justify-center bg-slate-50/50 dark:bg-transparent ${rowHeightKp}`}
           >
-            <Magnet className="w-3.5 h-3.5 text-amber-500 dark:text-amber-400 shrink-0" />
-            <span className="truncate">КР-Індекс</span>
+            <Magnet className="w-4 h-4 text-amber-500 dark:text-amber-400" />
           </div>
         </div>
 
-        {/* ================= 2. ДЕННІ КОЛОНКИ (7 ДНІВ) ================= */}
+        {/* ================= 2. СКРОЛ-ОБЛАСТЬ: НАЗВИ ПАРАМЕТРІВ + 7 ДНІВ ================= */}
         <div
           className="relative flex flex-col shrink-0"
-          style={{ width: `${totalWidth}px` }}
+          style={{ width: `${totalScrollWidth}px` }}
         >
-          {/* ---------------- Рядок 1: День + Іконка погоди ---------------- */}
+          {/* ---------------- Рядок 1: Назва "Параметр" + День / Дата ---------------- */}
           <div
-            className={`flex border-b border-slate-200 dark:border-slate-700/60 bg-slate-100 dark:bg-slate-800/80 ${
-              isExpanded ? 'h-14' : 'h-11'
-            }`}
+            className={`flex border-b border-slate-200 dark:border-slate-700/60 bg-slate-100 dark:bg-slate-800/80 ${rowHeightHeader}`}
           >
+            {/* Текстова назва стовпчика (скролиться) */}
+            <div
+              style={{ width: `${labelColWidth}px` }}
+              className="flex items-center px-2.5 font-bold text-slate-800 dark:text-slate-200 border-r border-slate-200 dark:border-slate-700/60 shrink-0 text-xs sm:text-sm truncate"
+            >
+              Параметр / День
+            </div>
+
+            {/* 7 колонок днів */}
             {days.map((day) => (
               <div
                 key={`header-${day.fullDate}`}
-                style={{ width: `${colWidth}px` }}
+                style={{ width: `${dayColWidth}px` }}
                 className="flex flex-col items-center justify-center border-r border-slate-200 dark:border-slate-700/60 px-1 shrink-0"
               >
                 <div className="flex items-center gap-1.5">
@@ -313,7 +310,7 @@ const WeeklyGrid: React.FC<WeeklyGridProps> = ({ days, isExpanded = false }) => 
             ))}
           </div>
 
-          {/* ---------------- Рядок 2: Температура (від .. до ..) + Сплайн-лінія ---------------- */}
+          {/* ---------------- Рядок 2: Температура, °C + Сплайн ---------------- */}
           <div
             className="relative flex border-b border-slate-200 dark:border-slate-700/60 bg-white dark:bg-slate-950/40"
             style={{ height: `${rowHeightTemp}px` }}
@@ -321,7 +318,7 @@ const WeeklyGrid: React.FC<WeeklyGridProps> = ({ days, isExpanded = false }) => 
             {/* SVG лінія та градієнт температури */}
             <svg
               className="absolute inset-0 pointer-events-none w-full h-full z-10 overflow-visible"
-              width={totalWidth}
+              width={totalScrollWidth}
               height={rowHeightTemp}
             >
               <defs>
@@ -347,13 +344,22 @@ const WeeklyGrid: React.FC<WeeklyGridProps> = ({ days, isExpanded = false }) => 
               )}
             </svg>
 
+            {/* Назва рядка */}
+            <div
+              style={{ width: `${labelColWidth}px` }}
+              className="relative flex items-center px-2.5 font-semibold text-slate-700 dark:text-slate-300 border-r border-slate-200 dark:border-slate-700/60 bg-white dark:bg-slate-900/90 z-20 shrink-0 text-[11px] sm:text-xs truncate"
+            >
+              Температура, °C
+            </div>
+
+            {/* Значення без одиниць (°C винесено в заголовок) */}
             {days.map((day) => {
               const minStr = day.tempMin > 0 ? `+${day.tempMin}` : `${day.tempMin}`
               const maxStr = day.tempMax > 0 ? `+${day.tempMax}` : `${day.tempMax}`
               return (
                 <div
                   key={`temp-${day.fullDate}`}
-                  style={{ width: `${colWidth}px` }}
+                  style={{ width: `${dayColWidth}px` }}
                   className="relative flex items-center justify-center border-r border-slate-200 dark:border-slate-800/80 px-1 z-0 shrink-0"
                   title={`Температура: від ${minStr}°C до ${maxStr}°C`}
                 >
@@ -362,23 +368,29 @@ const WeeklyGrid: React.FC<WeeklyGridProps> = ({ days, isExpanded = false }) => 
                       isExpanded ? 'text-xs' : 'text-[10px] sm:text-[10.5px]'
                     }`}
                   >
-                    {minStr}...{maxStr}°
+                    {minStr}...{maxStr}
                   </span>
                 </div>
               )
             })}
           </div>
 
-          {/* ---------------- Рядок 3: Вітер (від .. до ..) ---------------- */}
+          {/* ---------------- Рядок 3: Вітер, м/с ---------------- */}
           <div
-            className={`flex border-b border-slate-200 dark:border-slate-700/60 bg-slate-50/50 dark:bg-slate-950/30 ${
-              isExpanded ? 'h-12' : 'h-10'
-            }`}
+            className={`flex border-b border-slate-200 dark:border-slate-700/60 bg-slate-50/50 dark:bg-slate-950/30 ${rowHeightWind}`}
           >
+            <div
+              style={{ width: `${labelColWidth}px` }}
+              className="flex items-center px-2.5 font-semibold text-slate-700 dark:text-slate-300 border-r border-slate-200 dark:border-slate-700/60 shrink-0 text-[11px] sm:text-xs truncate"
+            >
+              Вітер, м/с
+            </div>
+
+            {/* Значення без повторення "м/с" у клітинках */}
             {days.map((day) => (
               <div
                 key={`wind-${day.fullDate}`}
-                style={{ width: `${colWidth}px` }}
+                style={{ width: `${dayColWidth}px` }}
                 className="flex flex-col items-center justify-center border-r border-slate-200 dark:border-slate-800/80 px-1 shrink-0 text-center leading-tight"
                 title={`Вітер: від ${day.windMin} до ${day.windMax} м/с, пориви до ${day.gustsMax} м/с`}
               >
@@ -387,48 +399,47 @@ const WeeklyGrid: React.FC<WeeklyGridProps> = ({ days, isExpanded = false }) => 
                     isExpanded ? 'text-xs' : 'text-[10px] sm:text-[10.5px]'
                   }`}
                 >
-                  {day.windMin} - {day.windMax} м/с
+                  {day.windMin} - {day.windMax}
                 </span>
                 <span className="text-[8.5px] text-slate-500 dark:text-slate-400 font-mono">
-                  пор. до {day.gustsMax}
+                  пор. {day.gustsMax}
                 </span>
               </div>
             ))}
           </div>
 
-          {/* ---------------- Рядок 4: Напрям вітру ---------------- */}
+          {/* ---------------- Рядок 4: Напрям вітру (Авіаційний формат, без румбу) ---------------- */}
           <div
-            className={`flex border-b border-slate-200 dark:border-slate-700/60 bg-white dark:bg-transparent ${
-              isExpanded ? 'h-11' : 'h-9'
-            }`}
+            className={`flex border-b border-slate-200 dark:border-slate-700/60 bg-white dark:bg-transparent ${rowHeightDir}`}
           >
+            <div
+              style={{ width: `${labelColWidth}px` }}
+              className="flex items-center px-2.5 font-semibold text-slate-700 dark:text-slate-300 border-r border-slate-200 dark:border-slate-700/60 shrink-0 text-[11px] sm:text-xs truncate"
+            >
+              Напрям вітру, °
+            </div>
+
             {days.map((day) => {
               const normDeg = ((Math.round(day.directionDeg) % 360) + 360) % 360
-              const compass = getCompassDirection(normDeg)
               return (
                 <div
                   key={`dir-${day.fullDate}`}
-                  style={{ width: `${colWidth}px` }}
-                  className="flex items-center justify-center gap-1.5 border-r border-slate-200 dark:border-slate-800/80 px-1 shrink-0"
-                  title={`Напрямок вітру: ${normDeg}° (${compass})`}
+                  style={{ width: `${dayColWidth}px` }}
+                  className="flex items-center justify-center border-r border-slate-200 dark:border-slate-800/80 px-1 shrink-0 py-0.5"
+                  title={`Напрямок руху вітру: ${normDeg}°`}
                 >
-                  <Navigation
-                    className="w-3 h-3 text-cyan-600 dark:text-cyan-400 shrink-0 transition-transform"
-                    style={{ transform: `rotate(${normDeg}deg)` }}
+                  <AviationWindBarb
+                    speedMs={day.windMax}
+                    directionDeg={normDeg}
+                    size={isExpanded ? 24 : 20}
+                    showText={true}
                   />
-                  <span
-                    className={`font-medium text-slate-700 dark:text-slate-300 ${
-                      isExpanded ? 'text-xs' : 'text-[10px]'
-                    }`}
-                  >
-                    {compass} {normDeg}°
-                  </span>
                 </div>
               )
             })}
           </div>
 
-          {/* ---------------- Рядок 5: Опади (від .. до ..) + Крива опадів ---------------- */}
+          {/* ---------------- Рядок 5: Опади, мм + Крива ---------------- */}
           <div
             className="relative flex border-b border-slate-200 dark:border-slate-700/60 bg-slate-50/50 dark:bg-slate-950/30"
             style={{ height: `${rowHeightPrecip}px` }}
@@ -436,7 +447,7 @@ const WeeklyGrid: React.FC<WeeklyGridProps> = ({ days, isExpanded = false }) => 
             {/* SVG крива опадів */}
             <svg
               className="absolute inset-0 pointer-events-none w-full h-full z-10 overflow-hidden"
-              width={totalWidth}
+              width={totalScrollWidth}
               height={rowHeightPrecip}
             >
               <defs>
@@ -461,17 +472,26 @@ const WeeklyGrid: React.FC<WeeklyGridProps> = ({ days, isExpanded = false }) => 
               )}
             </svg>
 
+            {/* Назва рядка */}
+            <div
+              style={{ width: `${labelColWidth}px` }}
+              className="relative flex items-center px-2.5 font-semibold text-slate-700 dark:text-slate-300 border-r border-slate-200 dark:border-slate-700/60 bg-slate-50 dark:bg-slate-900/90 z-20 shrink-0 text-[11px] sm:text-xs truncate"
+            >
+              Опади, мм
+            </div>
+
+            {/* Значення без повторення "мм" */}
             {days.map((day) => {
               const precipText =
                 day.precipMax === 0
-                  ? '0 мм'
-                  : `${day.precipMin} - ${day.precipMax} мм`
+                  ? '0'
+                  : `${day.precipMin} - ${day.precipMax}`
               return (
                 <div
                   key={`precip-${day.fullDate}`}
-                  style={{ width: `${colWidth}px` }}
+                  style={{ width: `${dayColWidth}px` }}
                   className="relative flex items-center justify-center border-r border-slate-200 dark:border-slate-800/80 px-1 z-0 shrink-0"
-                  title={`Опади: ${precipText}`}
+                  title={`Опади: ${precipText} мм`}
                 >
                   <span
                     className={`font-semibold text-slate-800 dark:text-slate-200 z-20 ${
@@ -485,16 +505,22 @@ const WeeklyGrid: React.FC<WeeklyGridProps> = ({ days, isExpanded = false }) => 
             })}
           </div>
 
-          {/* ---------------- Рядок 6: Кромка хмар (від .. до ..) ---------------- */}
+          {/* ---------------- Рядок 6: Кромка хмар, м ---------------- */}
           <div
-            className={`flex border-b border-slate-200 dark:border-slate-700/60 bg-white dark:bg-transparent ${
-              isExpanded ? 'h-12' : 'h-10'
-            }`}
+            className={`flex border-b border-slate-200 dark:border-slate-700/60 bg-white dark:bg-transparent ${rowHeightClouds}`}
           >
+            <div
+              style={{ width: `${labelColWidth}px` }}
+              className="flex items-center px-2.5 font-semibold text-slate-700 dark:text-slate-300 border-r border-slate-200 dark:border-slate-700/60 shrink-0 text-[11px] sm:text-xs truncate"
+            >
+              Кромка хмар, м
+            </div>
+
+            {/* Значення без "м" у кожній клітинці */}
             {days.map((day) => (
               <div
                 key={`cloud-${day.fullDate}`}
-                style={{ width: `${colWidth}px` }}
+                style={{ width: `${dayColWidth}px` }}
                 className="flex items-center justify-center border-r border-slate-200 dark:border-slate-800/80 px-1 shrink-0 text-center"
                 title={`Нижня кромка хмар: від ${day.cloudBaseMin}м до ${day.cloudBaseMax}м`}
               >
@@ -503,22 +529,27 @@ const WeeklyGrid: React.FC<WeeklyGridProps> = ({ days, isExpanded = false }) => 
                     isExpanded ? 'text-xs' : 'text-[10px] sm:text-[10.5px]'
                   }`}
                 >
-                  {day.cloudBaseMin}-{day.cloudBaseMax} м
+                  {day.cloudBaseMin} - {day.cloudBaseMax}
                 </span>
               </div>
             ))}
           </div>
 
-          {/* ---------------- Рядок 7: КР-Індекс (від .. до ..) ---------------- */}
+          {/* ---------------- Рядок 7: КР-Індекс ---------------- */}
           <div
-            className={`flex bg-slate-50/50 dark:bg-slate-950/40 ${
-              isExpanded ? 'h-10' : 'h-8'
-            }`}
+            className={`flex bg-slate-50/50 dark:bg-slate-950/40 ${rowHeightKp}`}
           >
+            <div
+              style={{ width: `${labelColWidth}px` }}
+              className="flex items-center px-2.5 font-semibold text-slate-700 dark:text-slate-300 border-r border-slate-200 dark:border-slate-700/60 shrink-0 text-[11px] sm:text-xs truncate"
+            >
+              КР-Індекс
+            </div>
+
             {days.map((day) => (
               <div
                 key={`kp-${day.fullDate}`}
-                style={{ width: `${colWidth}px` }}
+                style={{ width: `${dayColWidth}px` }}
                 className="flex items-center justify-center border-r border-slate-200 dark:border-slate-800/80 px-1 shrink-0"
                 title={`Геомагнітна активність: від ${day.kpMin} до ${day.kpMax}`}
               >
@@ -541,10 +572,11 @@ const WeeklyGrid: React.FC<WeeklyGridProps> = ({ days, isExpanded = false }) => 
 export const WeeklyForecastCard: React.FC<WeeklyForecastCardProps> = ({
   isSunMoonVisible = true,
   hourly = [],
+  className = '',
 }) => {
   const [isModalOpen, setIsModalOpen] = useState(false)
 
-  // Формування 7 днів прогнозу (якщо є hourly — агрегуємо дані, для решти генеруємо реалістичні показники)
+  // Формування 7 днів прогнозу
   const weeklyDays: WeeklyDayData[] = useMemo(() => {
     const daysArr: WeeklyDayData[] = []
     const startDate = hourly && hourly.length > 0 ? new Date(hourly[0].timestamp * 1000) : new Date()
@@ -579,57 +611,47 @@ export const WeeklyForecastCard: React.FC<WeeklyForecastCardProps> = ({
           directionDeg: dayPoints[Math.floor(dayPoints.length / 2)]?.windDirectionDeg ?? 270,
           precipMin: Math.round(Math.min(...precips) * 10) / 10,
           precipMax: Math.round(Math.max(...precips) * 10) / 10,
-          cloudBaseMin: Math.round(Math.min(...clouds)),
-          cloudBaseMax: Math.round(Math.max(...clouds)),
+          cloudBaseMin: Math.min(...clouds),
+          cloudBaseMax: Math.max(...clouds),
           cloudCoverPct: Math.round(
-            dayPoints.reduce((acc, p) => acc + (p.cloudCoverPct ?? 40), 0) / dayPoints.length
+            dayPoints.reduce((acc, p) => acc + (p.cloudCoverPct ?? 30), 0) / dayPoints.length
           ),
           kpMin: Math.min(...kps),
           kpMax: Math.max(...kps),
         })
       } else {
-        // Прогноз на подальші дні тижня з реалістичною синоптичною варіацією
-        const pseudoSeed = (d.getDate() * 13 + i * 7) % 10
-        const baseT = 16 + (pseudoSeed % 5)
+        // Якщо точок погодинного прогнозу для віддалених днів немає — моделюємо реалістичні сезонні коливання
+        const baseT = 16 + Math.sin(i * 0.8) * 4
         daysArr.push({
           dayName,
           dateFormatted,
           fullDate,
-          tempMin: baseT - 4,
-          tempMax: baseT + 5,
-          windMin: 2 + (pseudoSeed % 3),
-          windMax: 6 + (pseudoSeed % 4),
-          gustsMax: 9 + (pseudoSeed % 5),
-          directionDeg: (240 + pseudoSeed * 25) % 360,
-          precipMin: 0,
-          precipMax: pseudoSeed > 6 ? 1.2 : 0,
-          cloudBaseMin: 800 + pseudoSeed * 50,
-          cloudBaseMax: 1500 + pseudoSeed * 80,
-          cloudCoverPct: 30 + pseudoSeed * 6,
-          kpMin: 1,
-          kpMax: 2 + (pseudoSeed % 2),
+          tempMin: Math.round(baseT - 4),
+          tempMax: Math.round(baseT + 5),
+          windMin: 3 + (i % 3),
+          windMax: 7 + (i % 4),
+          gustsMax: 11 + (i % 5),
+          directionDeg: (240 + i * 20) % 360,
+          precipMin: i % 3 === 0 ? 0.2 : 0,
+          precipMax: i % 3 === 0 ? 1.4 : 0,
+          cloudBaseMin: 800 + (i % 4) * 200,
+          cloudBaseMax: 1400 + (i % 3) * 300,
+          cloudCoverPct: 20 + (i % 4) * 20,
+          kpMin: 1 + (i % 2),
+          kpMax: 2 + (i % 3),
         })
       }
     }
-
     return daysArr
   }, [hourly])
 
-  // Закриття модального вікна по Escape
+  // Закриття по Esc
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        setIsModalOpen(false)
-      }
+      if (e.key === 'Escape') setIsModalOpen(false)
     }
-    if (isModalOpen) {
-      window.addEventListener('keydown', handleKeyDown)
-      document.body.style.overflow = 'hidden'
-    }
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown)
-      document.body.style.overflow = 'unset'
-    }
+    if (isModalOpen) window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
   }, [isModalOpen])
 
   return (
@@ -637,32 +659,33 @@ export const WeeklyForecastCard: React.FC<WeeklyForecastCardProps> = ({
       <ForecastCard
         title="Тижневий прогноз"
         icon={CalendarDays}
-        className={`self-start w-full ${isSunMoonVisible ? 'lg:col-span-2' : 'lg:col-span-3'}`}
+        updatedText={null}
+        className={`w-full ${isSunMoonVisible ? 'lg:col-span-2' : 'lg:col-span-3'} ${className}`}
       >
-        <div className="flex-1 flex flex-col min-h-0 w-full overflow-hidden mt-1">
+        <div className="flex-1 flex flex-col justify-between min-h-0 w-full overflow-hidden mt-1">
           <WeeklyGrid days={weeklyDays} isExpanded={false} />
-        </div>
 
-        {/* 
-          Нижній рядок:
-          - Лівий кут: Інформаційний підпис дрібним шрифтом
-          - Правий кут: Кнопка "Розгорнути" на весь екран
-        */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5 mt-2.5 pt-1.5 border-t border-slate-200 dark:border-slate-700/60 shrink-0">
-          <span className="text-[10px] sm:text-[11px] text-slate-500 dark:text-slate-400 font-medium">
-            Прогноз на тиждень оновлюється автоматично й не потребує натискання кнопки «Оновити прогноз».
-          </span>
+          {/* 
+            Нижній рядок (без лінії розділення):
+            - Лівий кут: Інформаційний підпис
+            - Правий кут: Кнопка "Розгорнути" на весь екран
+          */}
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5 mt-2.5 pt-1 shrink-0">
+            <span className="text-[10px] sm:text-[11px] text-slate-500 dark:text-slate-400 font-medium">
+              Прогноз на тиждень оновлюється автоматично й не потребує натискання кнопки «Оновити прогноз».
+            </span>
 
-          <button
-            type="button"
-            onClick={() => setIsModalOpen(true)}
-            title="Розгорнути тижневий прогноз на весь екран"
-            aria-label="Розгорнути тижневий прогноз на весь екран"
-            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-700/60 transition-colors border border-slate-200 dark:border-slate-700/80 shadow-xs cursor-pointer shrink-0"
-          >
-            <Maximize2 className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
-            <span className="text-[11px] sm:text-xs">Розгорнути</span>
-          </button>
+            <button
+              type="button"
+              onClick={() => setIsModalOpen(true)}
+              title="Розгорнути тижневий прогноз на весь екран"
+              aria-label="Розгорнути тижневий прогноз на весь екран"
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-700/60 transition-colors border border-slate-200 dark:border-slate-700/80 shadow-xs cursor-pointer shrink-0"
+            >
+              <Maximize2 className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
+              <span className="text-[11px] sm:text-xs">Розгорнути</span>
+            </button>
+          </div>
         </div>
       </ForecastCard>
 
@@ -679,7 +702,7 @@ export const WeeklyForecastCard: React.FC<WeeklyForecastCardProps> = ({
             onClick={() => setIsModalOpen(false)}
           />
 
-          <div className="relative w-full max-w-7xl max-h-[92vh] bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700/80 rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
+          <div className="relative w-fit max-w-[95vw] lg:max-w-7xl max-h-[92vh] bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700/80 rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
             {/* Шапка модального вікна */}
             <div className="flex items-center justify-between px-4 sm:px-6 py-3.5 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/90 shrink-0">
               <div className="flex items-center gap-2.5">
@@ -706,7 +729,7 @@ export const WeeklyForecastCard: React.FC<WeeklyForecastCardProps> = ({
             </div>
 
             {/* Вміст модального вікна */}
-            <div className="flex-1 overflow-y-auto p-3 sm:p-5 flex flex-col min-h-0">
+            <div className="flex-1 overflow-y-auto p-3 sm:p-5 flex flex-col items-center sm:items-start min-h-0">
               <WeeklyGrid days={weeklyDays} isExpanded={true} />
             </div>
           </div>

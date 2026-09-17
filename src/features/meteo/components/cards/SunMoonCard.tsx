@@ -6,11 +6,13 @@ import type { AstronomyData } from '../../types/meteoData'
 interface SunMoonCardProps {
   isWeeklyVisible?: boolean
   astronomy?: AstronomyData
+  className?: string
 }
 
 export const SunMoonCard: React.FC<SunMoonCardProps> = ({
   isWeeklyVisible = true,
   astronomy,
+  className = '',
 }) => {
   const data: AstronomyData = astronomy || {
     sun: {
@@ -32,11 +34,11 @@ export const SunMoonCard: React.FC<SunMoonCardProps> = ({
     <ForecastCard
       title="Схід/Захід сонця та луни"
       icon={Sunrise}
-      className={isWeeklyVisible ? 'lg:col-span-1' : 'lg:col-span-3'}
+      className={`h-full ${isWeeklyVisible ? 'lg:col-span-1' : 'lg:col-span-3'} ${className}`}
     >
-      <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-3">
+      <div className="flex-1 flex flex-col justify-between gap-3 min-h-0">
         {/* Сонце */}
-        <div className="bg-slate-50 dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 rounded-lg p-3 flex flex-col justify-between">
+        <div className="bg-slate-50 dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 rounded-lg p-3 flex flex-col justify-between flex-1">
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2">
               <Sun className="w-5 h-5 text-amber-500 animate-pulse" />
@@ -77,7 +79,7 @@ export const SunMoonCard: React.FC<SunMoonCardProps> = ({
         </div>
 
         {/* Місяць / Луна */}
-        <div className="bg-slate-50 dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 rounded-lg p-3 flex flex-col justify-between">
+        <div className="bg-slate-50 dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 rounded-lg p-3 flex flex-col justify-between flex-1">
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2">
               <Moon className="w-5 h-5 text-indigo-400" />

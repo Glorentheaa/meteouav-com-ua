@@ -81,7 +81,19 @@ const ForecastGrid: React.FC<ForecastGridProps> = ({
   const [canScrollLeft, setCanScrollLeft] = useState(false)
   const [canScrollRight, setCanScrollRight] = useState(true)
 
-  const colWidth = isExpanded ? 76 : 56
+  const colWidth = isExpanded
+    ? points.length <= 4
+      ? 140
+      : points.length <= 8
+      ? 110
+      : points.length <= 16
+      ? 88
+      : 76
+    : points.length <= 4
+    ? 80
+    : points.length <= 8
+    ? 68
+    : 56
   const rowHeightTemp = isExpanded ? 46 : 38
   const rowHeightPrecip = isExpanded ? 44 : 36
   const totalWidth = points.length * colWidth
@@ -162,7 +174,11 @@ const ForecastGrid: React.FC<ForecastGridProps> = ({
   }, [points, colWidth, rowHeightPrecip])
 
   return (
-    <div className="relative w-full flex flex-col rounded-lg border border-slate-200 dark:border-slate-700/80 bg-white dark:bg-slate-900/90 shadow-sm dark:shadow-inner overflow-hidden select-none">
+    <div
+      className={`relative flex flex-col rounded-lg border border-slate-200 dark:border-slate-700/80 bg-white dark:bg-slate-900/90 shadow-sm dark:shadow-inner overflow-hidden select-none ${
+        isExpanded ? 'w-fit max-w-full' : 'w-full'
+      }`}
+    >
       {/* Кнопки горизонтальної навігації (стрілочки вліво / вправо) */}
       <button
         type="button"
@@ -770,7 +786,7 @@ export const ShortTermCard: React.FC<ShortTermCardProps> = ({
             onClick={() => setIsModalOpen(false)}
           />
 
-          <div className="relative w-full max-w-7xl max-h-[92vh] bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700/80 rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
+          <div className="relative w-fit max-w-[95vw] lg:max-w-7xl max-h-[92vh] bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700/80 rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
             {/* Шапка модального вікна */}
             <div className="flex items-center justify-between px-4 sm:px-6 py-3.5 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/90 shrink-0">
               <div className="flex items-center gap-2.5">
@@ -797,15 +813,13 @@ export const ShortTermCard: React.FC<ShortTermCardProps> = ({
             </div>
 
             {/* Вміст модального вікна (комфортні розміри та шрифти) */}
-            <div className="flex-1 overflow-y-auto p-3 sm:p-5 flex flex-col min-h-0">
-              <div className="flex-1 flex flex-col">
-                <ForecastGrid
-                  points={filteredPoints}
-                  warnings={warnings}
-                  maxFlightLevelM={maxFlightLevelM}
-                  isExpanded={true}
-                />
-              </div>
+            <div className="flex-1 overflow-y-auto p-3 sm:p-5 flex flex-col items-center sm:items-start min-h-0">
+              <ForecastGrid
+                points={filteredPoints}
+                warnings={warnings}
+                maxFlightLevelM={maxFlightLevelM}
+                isExpanded={true}
+              />
             </div>
           </div>
         </div>

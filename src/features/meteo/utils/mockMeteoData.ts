@@ -18,8 +18,6 @@ export function generateMockForecast(
   // Базовий напрямок вітру (наприклад, західний 250°)
   let baseDirection = 240 + Math.floor(Math.random() * 40 - 20)
 
-  // Базова швидкість вітру
-  const baseSurfaceWind = 5.5
 
   for (let i = 0; i < 48; i++) {
     const pointDate = new Date(now.getTime() + i * 3600 * 1000)
@@ -31,21 +29,41 @@ export function generateMockForecast(
     const dailyTempWave = Math.sin(((hour - 9) / 24) * 2 * Math.PI)
     const temp = Number((14 + dailyTempWave * 7 + (Math.random() * 1.2 - 0.6)).toFixed(1))
 
-    // Вітровий цикл (вдень вітер сильніший через турбулентний обмін)
-    const dayWindFactor = 1 + Math.max(0, Math.sin(((hour - 6) / 18) * Math.PI)) * 0.4
-    const surfaceWind = Number((baseSurfaceWind * dayWindFactor + (Math.random() * 1.5 - 0.7)).toFixed(1))
-    const surfaceGusts = Number((surfaceWind * (1.35 + Math.random() * 0.3)).toFixed(1))
+    // Вітровий цикл з реалістичними поривами та фронтальними зонами
+    // Створимо хвилю проходження атмосферного фронту (наприклад, з 13-ї по 20-ту годину та через добу)
+    const isFrontZone = (i >= 12 && i <= 18) || (i >= 34 && i <= 39)
+    const isMarginalZone = (i >= 9 && i <= 11) || (i >= 19 && i <= 22)
+
+    let surfaceWind: number
+    let surfaceGusts: number
+    let precipMm = 0.0
+
+    if (isFrontZone) {
+      // Фронт: посилений вітер і пориви до критичних/небезпечних
+      surfaceWind = Number((9.5 + Math.sin((i - 12) / 6 * Math.PI) * 2.8 + (Math.random() * 1.0 - 0.5)).toFixed(1))
+      surfaceGusts = Number((surfaceWind * (1.4 + Math.random() * 0.25)).toFixed(1))
+      precipMm = Number((0.6 + Math.random() * 1.4).toFixed(1))
+    } else if (isMarginalZone) {
+      // Наближення фронту: помітний вітер (зона уваги / жовтий-помаранчевий)
+      surfaceWind = Number((7.2 + Math.random() * 1.8).toFixed(1))
+      surfaceGusts = Number((surfaceWind * (1.3 + Math.random() * 0.2)).toFixed(1))
+      precipMm = Math.random() > 0.6 ? 0.3 : 0.0
+    } else {
+      // Сприятливі/ідеальні умови (ранок, спокійна погода)
+      const dayWindFactor = 1 + Math.max(0, Math.sin(((hour - 6) / 18) * Math.PI)) * 0.3
+      surfaceWind = Number((3.5 * dayWindFactor + (Math.random() * 1.4 - 0.7)).toFixed(1))
+      surfaceGusts = Number((surfaceWind * (1.25 + Math.random() * 0.15)).toFixed(1))
+      precipMm = 0.0
+    }
 
     // Напрямок руху вітру (плавний поворот по всій осі часу для наочної перевірки індикатора)
     const currentWindDirection = Math.round((45 + i * 25) % 360)
 
-    // Опади (наприклад, періодичний дощ у другій половині доби)
-    const hasRain = (i >= 8 && i <= 14) || (i >= 30 && i <= 34)
-    const precipMm = hasRain ? Number((0.2 + Math.random() * 0.9).toFixed(1)) : 0.0
+    const hasRain = precipMm > 0.1
 
     // Вологість (вища вночі та під час дощу)
     const humidity = hasRain
-      ? Math.min(98, Math.floor(82 + Math.random() * 14))
+      ? Math.min(98, Math.floor(84 + Math.random() * 12))
       : Math.floor(55 - dailyTempWave * 20 + Math.random() * 8)
 
     // Туман та видимість
@@ -54,28 +72,29 @@ export function generateMockForecast(
     const visibilityKm = fogRisk === 'high' ? 1.8 : fogRisk === 'low' ? 4.5 : Number((9.5 + Math.random() * 3).toFixed(1))
 
     // Висота кромки хмар (м)
-    const cloudBaseM = hasRain
-      ? Math.floor(400 + Math.random() * 250)
-      : Math.floor(850 + Math.random() * 500)
+    const cloudBaseM = isFrontZone
+      ? Math.floor(350 + Math.random() * 200)
+      : isMarginalZone
+      ? Math.floor(650 + Math.random() * 250)
+      : Math.floor(950 + Math.random() * 550)
 
     // Загальна хмарність (%)
     let cloudCoverPct = 25
-    if (hasRain) {
-      cloudCoverPct = Math.min(100, Math.floor(85 + Math.random() * 15))
-    } else if (fogRisk !== 'none') {
-      cloudCoverPct = Math.min(100, Math.floor(70 + Math.random() * 20))
+    if (isFrontZone) {
+      cloudCoverPct = Math.min(100, Math.floor(88 + Math.random() * 12))
+    } else if (fogRisk !== 'none' || isMarginalZone) {
+      cloudCoverPct = Math.min(100, Math.floor(65 + Math.random() * 25))
     } else if (cloudBaseM < 800) {
-      cloudCoverPct = Math.floor(60 + Math.random() * 25)
+      cloudCoverPct = Math.floor(50 + Math.random() * 20)
     } else {
-      cloudCoverPct = Math.floor(10 + Math.random() * 35)
+      cloudCoverPct = Math.floor(10 + Math.random() * 30)
     }
 
     // КР-індекс геомагнітної активності (0..9)
-    // Змоделюємо тимчасовий сплеск до 4-5 через 10 годин
     let kpIndex = 2
-    if (i >= 9 && i <= 15) {
+    if (i >= 14 && i <= 17) {
       kpIndex = 5 // Геомагнітне збурення
-    } else if (i >= 7 && i <= 18) {
+    } else if (i >= 11 && i <= 20) {
       kpIndex = 4
     } else {
       kpIndex = Math.floor(1 + Math.random() * 2)

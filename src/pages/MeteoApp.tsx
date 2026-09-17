@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { RefreshCw, Loader2, CheckCircle2, AlertCircle, Radar, MapPin } from 'lucide-react'
 
 // Hooks & utils
@@ -85,8 +85,16 @@ export const MeteoApp: React.FC = () => {
     return null
   })
 
-  // Поточний вибір у селекторі локацій (якщо прогноз вже збережено — беремо збережену локацію, інакше null для першого заходу)
+  // Поточний вибір у селекторі локацій (якщо є активна локація або збережений прогноз)
   const [selectedLocation, setSelectedLocation] = useState<SavedLocation | null>(() => {
+    try {
+      const active = localStorage.getItem('meteo_active_location_v2')
+      if (active) {
+        const parsed = JSON.parse(active)
+        if (parsed?.sectorId) return parsed
+      }
+    } catch {}
+
     try {
       const saved = localStorage.getItem(APPLIED_STATE_STORAGE_KEY)
       if (saved) {
@@ -96,6 +104,27 @@ export const MeteoApp: React.FC = () => {
     } catch {}
     return null
   })
+
+  // Синхронізація активної локації при поверненні з мапи або зміні в localStorage
+  useEffect(() => {
+    const syncActiveLocation = () => {
+      try {
+        const active = localStorage.getItem('meteo_active_location_v2')
+        if (active) {
+          const parsed = JSON.parse(active)
+          if (parsed?.sectorId && parsed.sectorId !== selectedLocation?.sectorId) {
+            setSelectedLocation(parsed)
+          }
+        }
+      } catch (e) {
+        console.error('Помилка синхронізації локації:', e)
+      }
+    }
+
+    syncActiveLocation()
+    window.addEventListener('focus', syncActiveLocation)
+    return () => window.removeEventListener('focus', syncActiveLocation)
+  }, [selectedLocation?.sectorId])
 
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [statusFeedback, setStatusFeedback] = useState<{
@@ -345,13 +374,13 @@ export const MeteoApp: React.FC = () => {
             <span className="font-bold text-emerald-600 dark:text-emerald-400">«Оновити прогноз»</span>.
             Погодні дані та обрані параметри будуть зафіксовані та зберігатимуться між сесіями.
           </p>
-          <div className="flex flex-wrap items-center justify-center gap-3">
-            <div className="px-4 py-2 rounded-lg bg-slate-100 dark:bg-slate-700/60 border border-slate-200 dark:border-slate-600 text-xs font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-2">
-              <MapPin className="w-4 h-4 text-emerald-500" />
+          <div className="flex flex-col items-center justify-center gap-2.5 w-full max-w-xs sm:max-w-sm">
+            <div className="w-full px-4 py-2.5 rounded-lg bg-slate-100 dark:bg-slate-700/60 border border-slate-200 dark:border-slate-600 text-xs font-semibold text-slate-700 dark:text-slate-200 flex items-center justify-center gap-2">
+              <MapPin className="w-4 h-4 text-emerald-500 shrink-0" />
               <span>1. Оберіть локацію або введіть координати</span>
             </div>
-            <div className="px-4 py-2 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-500/30 text-xs font-semibold text-emerald-700 dark:text-emerald-400 flex items-center gap-2">
-              <RefreshCw className="w-4 h-4 text-emerald-500" />
+            <div className="w-full px-4 py-2.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-500/30 text-xs font-semibold text-emerald-700 dark:text-emerald-400 flex items-center justify-center gap-2">
+              <RefreshCw className="w-4 h-4 text-emerald-500 shrink-0" />
               <span>2. Натисніть «Оновити прогноз»</span>
             </div>
           </div>
@@ -368,17 +397,15 @@ export const MeteoApp: React.FC = () => {
               />
 
               {/* 
-                Нова розмітка першого контейнера з 4 блоками (Вимога 3):
-                - Два вертикальних контейнери (лівий і правий).
-                - Лівий контейнер: Прогноз на найближчий час + Вікна для польотів.
-                - Правий контейнер: Вітер по ешелонах + Висновки метеоролога.
-                - При звуженні сторінки правий контейнер автоматично стає під лівий.
-                - Блоки не обмежені по висоті, займають висоту згідно внутрішнього контенту.
+                Два вертикальних контейнери (лівий і правий).
+                На широких екранах (lg:) контейнери мають items-stretch,
+                а нижні картки (FlightWindowsCard та MeteorologistCard) розширюються через flex-1,
+                тому обидві колонки закінчуються на абсолютно однаковому рівні внизу.
               */}
               {showGrid1 && (
-                <section className="flex flex-col lg:flex-row gap-4 sm:gap-6 items-start w-full animate-in fade-in slide-in-from-top-2 duration-300">
+                <section className="flex flex-col lg:flex-row gap-4 sm:gap-6 items-stretch w-full animate-in fade-in slide-in-from-top-2 duration-300">
                   {/* Лівий вертикальний контейнер (Прогноз + Вікна) */}
-                  <div className="flex flex-col gap-4 sm:gap-6 w-full lg:w-1/2 min-w-0 items-start">
+                  <div className="flex flex-col gap-4 sm:gap-6 w-full lg:w-1/2 min-w-0">
                     {blocks.shortTerm && (
                       <ShortTermCard
                         hourly={appliedForecast.forecastData?.hourly}
@@ -395,12 +422,13 @@ export const MeteoApp: React.FC = () => {
                         levels={appliedForecast.levels}
                         depth={appliedForecast.depth}
                         detail={appliedForecast.detail}
+                        className="flex-1"
                       />
                     )}
                   </div>
 
                   {/* Правий вертикальний контейнер (Вітер + Висновки) */}
-                  <div className="flex flex-col gap-4 sm:gap-6 w-full lg:w-1/2 min-w-0 items-start">
+                  <div className="flex flex-col gap-4 sm:gap-6 w-full lg:w-1/2 min-w-0">
                     {blocks.wind && (
                       <WindAltitudeCard
                         hourly={appliedForecast.forecastData?.hourly}
@@ -411,7 +439,10 @@ export const MeteoApp: React.FC = () => {
                       />
                     )}
                     {blocks.conclusion && (
-                      <MeteorologistCard aiSummary={appliedForecast.forecastData?.aiSummary} />
+                      <MeteorologistCard
+                        aiSummary={appliedForecast.forecastData?.aiSummary}
+                        className="flex-1"
+                      />
                     )}
                   </div>
                 </section>
@@ -429,19 +460,24 @@ export const MeteoApp: React.FC = () => {
                 className="mt-4 mb-2"
               />
 
+              {/* 
+                На широких екранах WeeklyForecastCard та SunMoonCard мають однакову висоту через items-stretch та h-full
+              */}
               {showGrid2 && (
-                <section className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 items-start animate-in fade-in slide-in-from-top-2 duration-300">
+                <section className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 items-stretch animate-in fade-in slide-in-from-top-2 duration-300">
                   {blocks.weekly && (
                     <WeeklyForecastCard
                       isSunMoonVisible={blocks.sunMoon}
                       chartUrl={appliedForecast.forecastData?.weeklyChartUrl}
                       hourly={appliedForecast.forecastData?.hourly}
+                      className="h-full"
                     />
                   )}
                   {blocks.sunMoon && (
                     <SunMoonCard
                       isWeeklyVisible={blocks.weekly}
                       astronomy={appliedForecast.forecastData?.astronomy}
+                      className="h-full"
                     />
                   )}
                 </section>

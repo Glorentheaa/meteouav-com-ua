@@ -60,11 +60,11 @@ export const MeteorologistCard: React.FC<MeteorologistCardProps> = ({
       title="Висновки метеолога"
       icon={Sparkles}
       headerAction={copyButton}
-      className={className}
+      className={`w-full ${className}`}
     >
       <div className="flex-1 flex flex-col justify-start min-h-0">
-        {/* Поле для простої текстової відповіді від ШІ (Вимога 4) */}
-        <div className="flex-1 bg-slate-50 dark:bg-slate-900/70 border border-slate-200 dark:border-slate-800 rounded-lg p-3.5 text-xs sm:text-sm text-slate-700 dark:text-slate-200 leading-relaxed whitespace-pre-wrap select-text overflow-y-auto max-h-[340px] min-h-[160px]">
+        {/* Поле для простої текстової відповіді від ШІ */}
+        <div className="flex-1 bg-slate-50 dark:bg-slate-900/70 border border-slate-200 dark:border-slate-800 rounded-lg p-3.5 text-xs sm:text-sm text-slate-700 dark:text-slate-200 leading-relaxed whitespace-pre-wrap select-text overflow-y-auto min-h-[160px]">
           {textContent}
         </div>
       </div>

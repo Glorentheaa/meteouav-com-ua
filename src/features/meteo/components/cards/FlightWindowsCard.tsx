@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react'
-import { Activity, Clock, ShieldCheck, AlertTriangle } from 'lucide-react'
+import { Activity } from 'lucide-react'
 import { ForecastCard } from './ForecastCard'
-import type { HourlyForecastPoint } from '../../types/meteoData'
+import type { HourlyForecastPoint, WarningSeverity } from '../../types/meteoData'
 import type { MeteoWarnings, FlightLevels, ForecastDepth, ForecastDetail } from '../../types/meteo'
 import { evaluateHour } from '../../utils/warningEvaluator'
 
@@ -14,14 +14,17 @@ interface FlightWindowsCardProps {
   className?: string
 }
 
-type DialHourStatus = 'past' | 'ideal' | 'favorable' | 'attention' | 'warning' | 'danger' | 'no_data'
+type DialSectorStatus = 'past' | 'ideal' | 'favorable' | 'attention' | 'warning' | 'danger' | 'no_data'
 
-interface DialHourData {
-  hour: number // 0..23
-  timeStr: string // "00:00", "01:00", ...
-  status: DialHourStatus
+interface DialSectorData {
+  id: string
+  startHour: number
+  endHour: number
+  timeRangeStr: string
+  status: DialSectorStatus
   issues: string[]
-  point?: HourlyForecastPoint
+  startAngle: number
+  endAngle: number
 }
 
 /**
@@ -49,13 +52,16 @@ function getArcPath(
   const x1i = cx + rInner * Math.cos(a1)
   const y1i = cy + rInner * Math.sin(a1)
 
-  return `M ${x1o.toFixed(2)} ${y1o.toFixed(2)} A ${rOuter} ${rOuter} 0 0 1 ${x2o.toFixed(2)} ${y2o.toFixed(2)} L ${x2i.toFixed(2)} ${y2i.toFixed(2)} A ${rInner} ${rInner} 0 0 0 ${x1i.toFixed(2)} ${y1i.toFixed(2)} Z`
+  // Перевірка на велику дугу (> 180 градусів)
+  const largeArc = endAngleDeg - startAngleDeg > 180 ? 1 : 0
+
+  return `M ${x1o.toFixed(2)} ${y1o.toFixed(2)} A ${rOuter} ${rOuter} 0 ${largeArc} 1 ${x2o.toFixed(2)} ${y2o.toFixed(2)} L ${x2i.toFixed(2)} ${y2i.toFixed(2)} A ${rInner} ${rInner} 0 ${largeArc} 0 ${x1i.toFixed(2)} ${y1i.toFixed(2)} Z`
 }
 
 /**
  * Кольорова заливка та обводка для кожного статусу сектора циферблату
  */
-function getSectorColor(status: DialHourStatus): { fill: string; stroke: string } {
+function getSectorColor(status: DialSectorStatus): { fill: string; stroke: string } {
   switch (status) {
     case 'past':
       return {
@@ -97,50 +103,39 @@ function getSectorColor(status: DialHourStatus): { fill: string; stroke: string 
 }
 
 /**
- * Окремий 24-годинний циферблат для одного дня
+ * Окремий 12-годинний циферблат з класичним розташуванням цифр
  */
-const ClockDial: React.FC<{
+const TwelveHourClockDial: React.FC<{
   title: string
-  dateStr: string
-  hours: DialHourData[]
-}> = ({ title, dateStr, hours }) => {
-  const [hoveredHour, setHoveredHour] = useState<DialHourData | null>(null)
+  subtitle: string
+  sectors: DialSectorData[]
+  hourNumbers: string[] // 12 цифр від 12/24 по колу
+}> = ({ title, subtitle, sectors, hourNumbers }) => {
+  const [hoveredSector, setHoveredSector] = useState<DialSectorData | null>(null)
 
   const cx = 115
   const cy = 115
-  const rInner = 64
-  const rOuter = 95
-  const rLabels = 108
+  const rInner = 60
+  const rOuter = 92
+  const rLabels = 106
 
-  // Підрахунок сприятливих годин для польотів
-  const safeCount = hours.filter(
-    (h) => h.status === 'ideal' || h.status === 'favorable'
+  // Підрахунок сприятливих секторів
+  const safeCount = sectors.filter(
+    (s) => s.status === 'ideal' || s.status === 'favorable'
   ).length
-  const forecastCount = hours.filter(
-    (h) => h.status !== 'past' && h.status !== 'no_data'
+  const activeCount = sectors.filter(
+    (s) => s.status !== 'past' && s.status !== 'no_data'
   ).length
-
-  // Годинні мітки навколо циферблата (кожні 3 години)
-  const hourTicks = [
-    { label: '00', angle: -90 },
-    { label: '03', angle: -45 },
-    { label: '06', angle: 0 },
-    { label: '09', angle: 45 },
-    { label: '12', angle: 90 },
-    { label: '15', angle: 135 },
-    { label: '18', angle: 180 },
-    { label: '21', angle: 225 },
-  ]
 
   return (
-    <div className="flex flex-col items-center w-full max-w-[270px] p-3 rounded-2xl bg-slate-50/60 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 shadow-xs select-none transition-all">
-      {/* Заголовок дати над циферблатом */}
+    <div className="flex flex-col items-center w-full max-w-[270px] p-2.5 sm:p-3 rounded-2xl bg-slate-50/60 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 shadow-xs select-none transition-all">
+      {/* Заголовок циферблата */}
       <div className="flex flex-col items-center mb-1 text-center">
         <span className="text-xs font-bold text-slate-800 dark:text-slate-100 tracking-tight">
           {title}
         </span>
         <span className="text-[10px] font-medium font-mono text-slate-400 dark:text-slate-500">
-          {dateStr}
+          {subtitle}
         </span>
       </div>
 
@@ -159,50 +154,55 @@ const ClockDial: React.FC<{
             className="fill-none stroke-slate-100 dark:stroke-slate-800/50"
           />
 
-          {/* 24 сектори годин */}
-          {hours.map((h) => {
-            // Кожна година займає 15 градусів (360 / 24 = 15)
-            // 00:00 починається вгорі (-90 градусів)
-            const baseAngle = -90 + h.hour * 15
-            const gap = 1.0 // зазор між секторами в градусах
-            const startAngle = baseAngle + gap
-            const endAngle = baseAngle + 15 - gap
+          {/* Інтерактивні сектори (12, 4 або 2 відповідно до кроку) */}
+          {sectors.map((s) => {
+            const gap = sectors.length > 2 ? 1.0 : 0.6
+            const aStart = s.startAngle + gap
+            const aEnd = s.endAngle - gap
 
-            const isHovered = hoveredHour?.hour === h.hour
+            const isHovered = hoveredSector?.id === s.id
             const currentRInner = isHovered ? rInner - 2 : rInner
             const currentROuter = isHovered ? rOuter + 3 : rOuter
 
-            const path = getArcPath(cx, cy, currentRInner, currentROuter, startAngle, endAngle)
-            const colors = getSectorColor(h.status)
+            const path = getArcPath(cx, cy, currentRInner, currentROuter, aStart, aEnd)
+            const colors = getSectorColor(s.status)
 
             return (
               <path
-                key={h.hour}
+                key={s.id}
                 d={path}
                 className={`${colors.fill} ${colors.stroke} stroke-[1] transition-all duration-150 cursor-pointer ${
                   isHovered ? 'filter drop-shadow-md scale-[1.02] origin-center z-10' : ''
                 }`}
-                onMouseEnter={() => setHoveredHour(h)}
-                onMouseLeave={() => setHoveredHour(null)}
+                onMouseEnter={() => setHoveredSector(s)}
+                onMouseLeave={() => setHoveredSector(null)}
               />
             )
           })}
 
-          {/* Цифрові підписи годин по периметру (00, 03, 06, 09, 12, 15, 18, 21) */}
-          {hourTicks.map((tick) => {
-            const rad = (tick.angle * Math.PI) / 180
+          {/* 12 класичних годинних цифр навколо циферблата */}
+          {hourNumbers.map((num, i) => {
+            // i=0: 12 (top, -90°); i=1: 1 (-60°); i=2: 2 (-30°); i=3: 3 (0°)...
+            const angleDeg = -90 + i * 30
+            const rad = (angleDeg * Math.PI) / 180
             const tx = cx + rLabels * Math.cos(rad)
             const ty = cy + rLabels * Math.sin(rad)
+            const isCardinal = i === 0 || i === 3 || i === 6 || i === 9
+
             return (
               <text
-                key={tick.label}
+                key={`tick-${i}-${num}`}
                 x={tx}
                 y={ty}
                 textAnchor="middle"
                 dominantBaseline="central"
-                className="text-[9px] font-mono font-bold fill-slate-400 dark:fill-slate-500 select-none pointer-events-none"
+                className={`select-none pointer-events-none font-mono ${
+                  isCardinal
+                    ? 'text-[10px] font-extrabold fill-slate-700 dark:fill-slate-300'
+                    : 'text-[8.5px] font-semibold fill-slate-400 dark:fill-slate-500'
+                }`}
               >
-                {tick.label}
+                {num}
               </text>
             )
           })}
@@ -219,77 +219,68 @@ const ClockDial: React.FC<{
         {/* Інтерактивний центр циферблату */}
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
           <div className="w-[110px] h-[110px] rounded-full flex flex-col items-center justify-center p-1 text-center">
-            {hoveredHour ? (
+            {hoveredSector ? (
               <div className="flex flex-col items-center justify-center animate-in fade-in zoom-in-90 duration-150">
-                <span className="font-mono font-extrabold text-sm sm:text-base text-slate-800 dark:text-slate-100 leading-tight">
-                  {hoveredHour.timeStr}
+                <span className="font-mono font-extrabold text-xs sm:text-sm text-slate-800 dark:text-slate-100 leading-tight">
+                  {hoveredSector.timeRangeStr}
                 </span>
 
-                {hoveredHour.status === 'past' && (
+                {hoveredSector.status === 'past' && (
                   <span className="text-[9.5px] font-semibold text-slate-500 dark:text-slate-400 mt-0.5">
                     Минулий час
                   </span>
                 )}
-                {hoveredHour.status === 'ideal' && (
+                {hoveredSector.status === 'ideal' && (
                   <span className="text-[9.5px] font-bold text-emerald-600 dark:text-emerald-400 mt-0.5">
                     Ідеально
                   </span>
                 )}
-                {hoveredHour.status === 'favorable' && (
+                {hoveredSector.status === 'favorable' && (
                   <span className="text-[9.5px] font-bold text-emerald-700 dark:text-emerald-300 mt-0.5">
                     Сприятливо
                   </span>
                 )}
-                {hoveredHour.status === 'attention' && (
+                {hoveredSector.status === 'attention' && (
                   <span className="text-[9.5px] font-bold text-yellow-600 dark:text-yellow-400 mt-0.5">
                     Увага
                   </span>
                 )}
-                {hoveredHour.status === 'warning' && (
+                {hoveredSector.status === 'warning' && (
                   <span className="text-[9.5px] font-bold text-orange-600 dark:text-orange-400 mt-0.5">
                     Наближення
                   </span>
                 )}
-                {hoveredHour.status === 'danger' && (
-                  <span className="text-[9.5px] font-extrabold text-rose-600 dark:text-rose-400 mt-0.5">
-                    Перевищення
+                {hoveredSector.status === 'danger' && (
+                  <span className="text-[9.5px] font-bold text-rose-600 dark:text-rose-400 mt-0.5">
+                    Небезпечно
                   </span>
                 )}
-                {hoveredHour.status === 'no_data' && (
-                  <span className="text-[9.5px] font-medium text-slate-400 mt-0.5">
+                {hoveredSector.status === 'no_data' && (
+                  <span className="text-[9px] text-slate-400 mt-0.5">
                     Немає даних
                   </span>
                 )}
 
-                {hoveredHour.issues.length > 0 ? (
-                  <span className="text-[8.5px] text-slate-500 dark:text-slate-400 max-w-[95px] line-clamp-2 leading-tight mt-0.5">
-                    {hoveredHour.issues[0]}
+                {/* Фактор обмеження */}
+                {hoveredSector.issues.length > 0 && hoveredSector.status !== 'past' && (
+                  <span className="text-[8px] text-slate-500 dark:text-slate-400 line-clamp-2 mt-0.5 px-1 leading-tight font-medium">
+                    {hoveredSector.issues[0]}
                   </span>
-                ) : hoveredHour.status === 'ideal' || hoveredHour.status === 'favorable' ? (
-                  <span className="text-[8.5px] text-slate-500 dark:text-slate-400 mt-0.5">
-                    Без обмежень
-                  </span>
-                ) : null}
+                )}
               </div>
             ) : (
-              <div className="flex flex-col items-center justify-center animate-in fade-in duration-200">
-                {safeCount >= 10 ? (
-                  <ShieldCheck className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-500 mb-0.5" />
-                ) : safeCount > 0 ? (
-                  <Clock className="w-4 h-4 sm:w-5 sm:h-5 text-amber-500 mb-0.5" />
-                ) : (
-                  <AlertTriangle className="w-4 h-4 sm:w-5 sm:h-5 text-rose-500 mb-0.5" />
-                )}
-
-                <span className="font-bold text-xs sm:text-[13px] text-slate-800 dark:text-slate-100 leading-tight">
-                  {safeCount} з {forecastCount || 24} год
+              <div className="flex flex-col items-center justify-center">
+                <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-0.5">
+                  Вікно БПЛА
                 </span>
-                <span className="text-[9px] font-medium text-slate-400 dark:text-slate-500 mt-0.5">
-                  {safeCount >= 12
-                    ? 'Сприятливий день'
-                    : safeCount > 0
-                    ? 'Обмежені вікна'
-                    : 'Не придатний'}
+                <span className="font-mono font-extrabold text-base sm:text-lg text-emerald-600 dark:text-emerald-400 leading-none">
+                  {safeCount}
+                  <span className="text-xs text-slate-400 dark:text-slate-500 font-normal ml-0.5">
+                    /{activeCount}
+                  </span>
+                </span>
+                <span className="text-[8.5px] text-slate-500 dark:text-slate-400 mt-0.5">
+                  доступних слотів
                 </span>
               </div>
             )}
@@ -303,155 +294,154 @@ const ClockDial: React.FC<{
 export const FlightWindowsCard: React.FC<FlightWindowsCardProps> = ({
   hourly = [],
   warnings,
-  levels = '300',
-  depth = '24',
+  levels = '800',
+  depth = '48',
   detail = '1',
   className = '',
 }) => {
-  const maxFlightLevelM = parseInt(levels, 10) || 300
-  const depthHours = parseInt(depth, 10) || 24
+  const depthHours = parseInt(depth, 10) || 48
   const detailHours = parseInt(detail, 10) || 1
+  const maxFlightLevelM = parseInt(levels, 10) || 800
 
-  // 1. Формуємо дати сьогодні та завтра
-  const { todayDate, tomorrowDate, todayFormatted, tomorrowFormatted } = useMemo(() => {
-    if (!hourly || hourly.length === 0) {
-      const d = new Date()
-      const t = new Date(d)
-      t.setDate(t.getDate() + 1)
-      const dStr = d.toISOString().slice(0, 10)
-      const tStr = t.toISOString().slice(0, 10)
-      return {
-        todayDate: dStr,
-        tomorrowDate: tStr,
-        todayFormatted: d.toLocaleDateString('uk-UA'),
-        tomorrowFormatted: t.toLocaleDateString('uk-UA'),
-      }
+  // Визначаємо дату початку прогнозу (сьогодні)
+  const todayDateStr = useMemo(() => {
+    if (hourly && hourly.length > 0) {
+      return hourly[0].fullDate
     }
-
-    const tDate = hourly[0].fullDate
-    let tmDate = ''
-    for (const pt of hourly) {
-      if (pt.fullDate > tDate) {
-        tmDate = pt.fullDate
-        break
-      }
-    }
-
-    // Якщо прогноз не містить наступної дати — додаємо день до tDate
-    if (!tmDate) {
-      const parts = tDate.split('-').map(Number)
-      if (parts.length === 3) {
-        const dObj = new Date(parts[0], parts[1] - 1, parts[2] + 1)
-        tmDate = `${dObj.getFullYear()}-${String(dObj.getMonth() + 1).padStart(2, '0')}-${String(
-          dObj.getDate()
-        ).padStart(2, '0')}`
-      }
-    }
-
-    const formatUA = (s: string) => {
-      const p = s.split('-')
-      return p.length === 3 ? `${p[2]}.${p[1]}.${p[0]}` : s
-    }
-
-    return {
-      todayDate: tDate,
-      tomorrowDate: tmDate,
-      todayFormatted: formatUA(tDate),
-      tomorrowFormatted: formatUA(tmDate),
-    }
+    return new Date().toISOString().slice(0, 10)
   }, [hourly])
 
-  // 2. Перша година доступного прогнозу (до неї час вважається минулим і підсвічується сірим)
+  const todayFormatted = useMemo(() => {
+    const parts = todayDateStr.split('-')
+    if (parts.length === 3) {
+      return `${parts[2]}.${parts[1]}.${parts[0]}`
+    }
+    return todayDateStr
+  }, [todayDateStr])
+
+  // Поточна година початку прогнозу (для сірого забарвлення минулих годин)
   const firstForecastHour = useMemo(() => {
-    if (!hourly || hourly.length === 0) return 0
-    const [h] = hourly[0].time.split(':')
-    return parseInt(h, 10) || 0
+    if (hourly && hourly.length > 0) {
+      return parseInt(hourly[0].time.split(':')[0], 10)
+    }
+    return new Date().getHours()
   }, [hourly])
 
-  // 3. Побудова даних для циферблату Сьогодні (24 години)
-  const todayHours: DialHourData[] = useMemo(() => {
-    const hoursArr: DialHourData[] = []
+  // Ранжування статусів небезпеки
+  const severityRank: Record<DialSectorStatus, number> = {
+    danger: 5,
+    warning: 4,
+    attention: 3,
+    favorable: 2,
+    ideal: 1,
+    past: 0,
+    no_data: -1,
+  }
 
-    for (let h = 0; h < 24; h++) {
-      const timeStr = `${String(h).padStart(2, '0')}:00`
+  // Генерація секторів для 12-годинного блоку
+  const buildHalfDaySectors = (startBaseHour: number) => {
+    const sectorCount = Math.max(1, Math.floor(12 / detailHours))
+    const spanAngle = 360 / sectorCount
+    const sectors: DialSectorData[] = []
 
-      // До першої години показу прогнозу — минулий час (сірим)
-      if (h < firstForecastHour) {
-        hoursArr.push({
-          hour: h,
-          timeStr,
+    for (let s = 0; s < sectorCount; s++) {
+      const segStart = startBaseHour + s * detailHours
+      const segEnd = segStart + detailHours
+      const startAngle = -90 + s * spanAngle
+      const endAngle = startAngle + spanAngle
+
+      const timeRangeStr =
+        detailHours === 1
+          ? `${String(segStart).padStart(2, '0')}:00`
+          : `${String(segStart).padStart(2, '0')}:00 - ${String(segEnd).padStart(2, '0')}:00`
+
+      // Перевіряємо чи цей сектор повністю в минулому
+      if (segEnd <= firstForecastHour) {
+        sectors.push({
+          id: `seg-${segStart}-${segEnd}`,
+          startHour: segStart,
+          endHour: segEnd,
+          timeRangeStr,
           status: 'past',
-          issues: ['Минулий час доби'],
+          issues: ['Година вже минула'],
+          startAngle,
+          endAngle,
         })
         continue
       }
 
-      // Шукаємо відповідну точку у прогнозі з урахуванням кроку деталізації
-      const pt = hourly.find((p) => {
-        if (p.fullDate !== todayDate) return false
-        const pHour = parseInt(p.time.split(':')[0], 10)
-        return h >= pHour && h < pHour + detailHours
+      // Шукаємо точки прогнозу для даного часового проміжку
+      const matchingPoints = hourly.filter((p) => {
+        if (p.fullDate !== todayDateStr) return false
+        const h = parseInt(p.time.split(':')[0], 10)
+        return h >= segStart && h < segEnd
       })
 
-      if (pt) {
-        const evaluation = evaluateHour(pt, warnings, maxFlightLevelM)
-        hoursArr.push({
-          hour: h,
-          timeStr,
-          status: evaluation.severity as DialHourStatus,
-          issues: evaluation.issues,
-          point: pt,
-        })
-      } else {
-        // Якщо для години немає прогнозу в межах заданої глибини
-        hoursArr.push({
-          hour: h,
-          timeStr,
+      if (matchingPoints.length === 0) {
+        sectors.push({
+          id: `seg-${segStart}-${segEnd}`,
+          startHour: segStart,
+          endHour: segEnd,
+          timeRangeStr,
           status: 'no_data',
-          issues: ['Немає прогнозних даних'],
+          issues: ['Поза межами прогнозу'],
+          startAngle,
+          endAngle,
         })
+        continue
       }
-    }
 
-    return hoursArr
-  }, [hourly, todayDate, firstForecastHour, detailHours, warnings, maxFlightLevelM])
+      // Визначаємо найгірший статус серед точок сектора
+      let worstStatus: DialSectorStatus = 'ideal'
+      const collectedIssues: string[] = []
 
-  // 4. Побудова даних для циферблату Завтра (24 години)
-  const tomorrowHours: DialHourData[] = useMemo(() => {
-    const hoursArr: DialHourData[] = []
+      for (const pt of matchingPoints) {
+        const evalRes = evaluateHour(pt, warnings, maxFlightLevelM)
+        const statusMap: Record<WarningSeverity, DialSectorStatus> = {
+          danger: 'danger',
+          warning: 'warning',
+          attention: 'attention',
+          favorable: 'favorable',
+          ideal: 'ideal',
+          safe: 'ideal',
+        }
+        const mappedStatus = statusMap[evalRes.severity] || 'ideal'
+        if (severityRank[mappedStatus] > severityRank[worstStatus]) {
+          worstStatus = mappedStatus
+        }
+        if (evalRes.issues.length > 0) {
+          collectedIssues.push(...evalRes.issues)
+        }
+      }
 
-    for (let h = 0; h < 24; h++) {
-      const timeStr = `${String(h).padStart(2, '0')}:00`
-
-      // Шукаємо відповідну точку для дати завтра
-      const pt = hourly.find((p) => {
-        if (p.fullDate !== tomorrowDate) return false
-        const pHour = parseInt(p.time.split(':')[0], 10)
-        return h >= pHour && h < pHour + detailHours
+      sectors.push({
+        id: `seg-${segStart}-${segEnd}`,
+        startHour: segStart,
+        endHour: segEnd,
+        timeRangeStr,
+        status: worstStatus,
+        issues: Array.from(new Set(collectedIssues)),
+        startAngle,
+        endAngle,
       })
-
-      if (pt) {
-        const evaluation = evaluateHour(pt, warnings, maxFlightLevelM)
-        hoursArr.push({
-          hour: h,
-          timeStr,
-          status: evaluation.severity as DialHourStatus,
-          issues: evaluation.issues,
-          point: pt,
-        })
-      } else {
-        // Якщо глибина прогнозу 24 год і завтрашні години не покриті
-        hoursArr.push({
-          hour: h,
-          timeStr,
-          status: 'no_data',
-          issues: ['Поза межами обраної глибини прогнозу'],
-        })
-      }
     }
 
-    return hoursArr
-  }, [hourly, tomorrowDate, detailHours, warnings, maxFlightLevelM])
+    return sectors
+  }
+
+  // Перша половина дня (00:00 - 12:00)
+  const amSectors = useMemo(() => {
+    return buildHalfDaySectors(0)
+  }, [hourly, todayDateStr, firstForecastHour, detailHours, warnings, maxFlightLevelM])
+
+  // Друга половина дня (12:00 - 24:00)
+  const pmSectors = useMemo(() => {
+    return buildHalfDaySectors(12)
+  }, [hourly, todayDateStr, firstForecastHour, detailHours, warnings, maxFlightLevelM])
+
+  // Номери годин для класичного циферблата
+  const amHourNumbers = ['12', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11']
+  const pmHourNumbers = ['24', '13', '14', '15', '16', '17', '18', '19', '20', '21', '22', '23']
 
   if (!hourly || hourly.length === 0) {
     return (
@@ -467,37 +457,34 @@ export const FlightWindowsCard: React.FC<FlightWindowsCardProps> = ({
     <ForecastCard
       title="Вікна для польотів"
       icon={Activity}
-      className={`self-start w-full ${className}`}
+      className={`w-full ${className}`}
     >
-      <div className="w-full flex flex-col min-h-0">
-        {/* Два циферблати: Сьогодні та Завтра (в ряд, при зменшенні екрана — один під одним) */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 w-full items-center justify-items-center py-1">
-          <ClockDial
-            title="Сьогодні"
-            dateStr={todayFormatted}
-            hours={todayHours}
+      <div className="w-full flex flex-col justify-between flex-1 min-h-0">
+        {/* Два 12-годинних циферблати на Сьогодні: 00-12 та 12-24 */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-5 w-full items-center justify-items-center py-1">
+          <TwelveHourClockDial
+            title="Сьогодні: 00:00 – 12:00"
+            subtitle={`${todayFormatted} (Ніч / Ранок)`}
+            sectors={amSectors}
+            hourNumbers={amHourNumbers}
           />
-          <ClockDial
-            title="Завтра"
-            dateStr={tomorrowFormatted}
-            hours={tomorrowHours}
+          <TwelveHourClockDial
+            title="Сьогодні: 12:00 – 24:00"
+            subtitle={`${todayFormatted} (День / Вечір)`}
+            sectors={pmSectors}
+            hourNumbers={pmHourNumbers}
           />
         </div>
 
         {/* 
-          Нижній рядок:
-          - Лівий кут: Трек: крок X год, глибина Y год (як у першому блоці)
-          - Правий кут: Кольорова градація попереджень, розшифровка
+          Нижня інформаційна частина:
+          - В один рядок над треком: розшифровка кольорів (без лінії розділення)
+          - Знизу: підпис треку
         */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5 mt-3 pt-2.5 border-t border-slate-200 dark:border-slate-700/60 shrink-0">
-          {/* Лівий кут: трек */}
-          <span className="text-[11px] text-slate-500 dark:text-slate-400 font-medium whitespace-nowrap">
-            Трек: крок {detailHours} год, глибина {depthHours} год
-          </span>
-
-          {/* Правий кут: розшифровка та кольорова градація */}
-          <div className="flex flex-wrap items-center gap-2 sm:gap-2.5 text-[10px] font-semibold">
-            <span className="flex items-center gap-1" title="Час від початку доби до моменту прогнозу">
+        <div className="flex flex-col items-start gap-1.5 mt-2.5 pt-1 shrink-0">
+          {/* Розшифровка кольорів попереджень в один рядок */}
+          <div className="flex flex-wrap items-center gap-2 sm:gap-2.5 text-[9.5px] sm:text-[10px] font-semibold">
+            <span className="flex items-center gap-1" title="Час від початку доби до поточного прогнозу">
               <span className="w-2.5 h-2.5 rounded-xs bg-slate-400 dark:bg-slate-600 shadow-2xs" />
               <span className="text-slate-500 dark:text-slate-400">Минулий</span>
             </span>
@@ -505,7 +492,7 @@ export const FlightWindowsCard: React.FC<FlightWindowsCardProps> = ({
               <span className="w-2.5 h-2.5 rounded-xs bg-emerald-500 shadow-2xs" />
               <span className="text-emerald-700 dark:text-emerald-400">Ідеально</span>
             </span>
-            <span className="flex items-center gap-1" title="Сприятливі умови">
+            <span className="flex items-center gap-1" title="Сприятливі умови польоту">
               <span className="w-2.5 h-2.5 rounded-xs bg-emerald-700 shadow-2xs" />
               <span className="text-emerald-800 dark:text-emerald-300">Сприятливо</span>
             </span>
@@ -513,7 +500,7 @@ export const FlightWindowsCard: React.FC<FlightWindowsCardProps> = ({
               <span className="w-2.5 h-2.5 rounded-xs bg-yellow-400 shadow-2xs" />
               <span className="text-yellow-700 dark:text-yellow-400">Увага</span>
             </span>
-            <span className="flex items-center gap-1" title="Наближення до лімітів">
+            <span className="flex items-center gap-1" title="Наближення до критичних показників">
               <span className="w-2.5 h-2.5 rounded-xs bg-orange-500 shadow-2xs" />
               <span className="text-orange-700 dark:text-orange-400">Наближення</span>
             </span>
@@ -522,6 +509,11 @@ export const FlightWindowsCard: React.FC<FlightWindowsCardProps> = ({
               <span className="text-rose-700 dark:text-rose-400">Перевищення</span>
             </span>
           </div>
+
+          {/* Підпис треку під розшифровкою */}
+          <span className="text-[10.5px] text-slate-500 dark:text-slate-400 font-medium whitespace-nowrap">
+            Трек: крок {detailHours} год, глибина {depthHours} год
+          </span>
         </div>
       </div>
     </ForecastCard>

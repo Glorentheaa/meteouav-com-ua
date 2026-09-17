@@ -1,7 +1,6 @@
 import React, { useMemo, useState, useRef, useEffect } from 'react'
 import {
   Wind,
-  Navigation,
   Layers,
   Maximize2,
   X,
@@ -9,11 +8,11 @@ import {
   ChevronRight,
 } from 'lucide-react'
 import { ForecastCard } from './ForecastCard'
-import { WeatherIcon } from './WeatherIcon'
+import { AviationWindBarb } from './AviationWindBarb'
 import { DiagonalSplitCell } from './DiagonalSplitCell'
 import type { HourlyForecastPoint, AltitudeLevel } from '../../types/meteoData'
 import type { ForecastDepth, ForecastDetail, FlightLevels, MeteoWarnings } from '../../types/meteo'
-import { evaluateWind, evaluateGusts } from '../../utils/warningEvaluator'
+import { evaluateWind, evaluateGusts, getSeverityCellClass } from '../../utils/warningEvaluator'
 
 interface WindAltitudeCardProps {
   hourly?: HourlyForecastPoint[]
@@ -44,10 +43,22 @@ const WindAltitudeGrid: React.FC<WindAltitudeGridProps> = ({
   const [canScrollLeft, setCanScrollLeft] = useState(false)
   const [canScrollRight, setCanScrollRight] = useState(true)
 
-  const colWidth = isExpanded ? 104 : 82
-  const leftColWidth = isExpanded ? 'w-[76px] sm:w-[84px]' : 'w-[64px] sm:w-[70px]'
-  const rowHeight = isExpanded ? 'h-12' : 'h-10'
-  const headerHeight = isExpanded ? 'h-14' : 'h-11'
+  const colWidth = isExpanded
+    ? points.length <= 4
+      ? 150
+      : points.length <= 8
+      ? 130
+      : points.length <= 12
+      ? 120
+      : 112
+    : points.length <= 4
+    ? 110
+    : points.length <= 8
+    ? 100
+    : 90
+  const leftColWidth = isExpanded ? 'w-[78px] sm:w-[86px]' : 'w-[64px] sm:w-[70px]'
+  const rowHeight = isExpanded ? 'h-14' : 'h-12'
+  const headerHeight = isExpanded ? 'h-11' : 'h-9'
   const totalWidth = points.length * colWidth
 
   const checkScroll = () => {
@@ -73,7 +84,11 @@ const WindAltitudeGrid: React.FC<WindAltitudeGridProps> = ({
   }
 
   return (
-    <div className="relative w-full flex flex-col rounded-lg border border-slate-200 dark:border-slate-700/80 bg-white dark:bg-slate-900/90 shadow-sm dark:shadow-inner overflow-hidden select-none">
+    <div
+      className={`relative flex flex-col rounded-lg border border-slate-200 dark:border-slate-700/80 bg-white dark:bg-slate-900/90 shadow-sm dark:shadow-inner overflow-hidden select-none ${
+        isExpanded ? 'w-fit max-w-full' : 'w-full'
+      }`}
+    >
       {/* Кнопки горизонтальної навігації (стрілочки вліво / вправо) */}
       <button
         type="button"
@@ -146,108 +161,117 @@ const WindAltitudeGrid: React.FC<WindAltitudeGridProps> = ({
           className="relative flex flex-col shrink-0"
           style={{ width: `${totalWidth}px` }}
         >
-          {/* Рядок 1: Години + Іконки погоди (як у ShortTermCard) */}
+          {/* Рядок 1: Години (без іконок за вимогою користувача) */}
           <div
             className={`flex border-b border-slate-200 dark:border-slate-700/60 bg-slate-100 dark:bg-slate-800/80 ${headerHeight}`}
           >
-            {points.map((pt) => {
-              const cloudCover = pt.cloudCoverPct ?? (pt.cloudBaseM < 800 ? 80 : 30)
-              return (
-                <div
-                  key={`time-${pt.timestamp}`}
-                  style={{ width: `${colWidth}px` }}
-                  className="flex flex-col items-center justify-center border-r border-slate-200 dark:border-slate-700/60 px-0.5 shrink-0"
+            {points.map((pt) => (
+              <div
+                key={`time-${pt.timestamp}`}
+                style={{ width: `${colWidth}px` }}
+                className="flex items-center justify-center border-r border-slate-200 dark:border-slate-700/60 px-0.5 shrink-0"
+              >
+                <span
+                  className={`font-bold font-mono tracking-tight text-slate-700 dark:text-slate-200 ${
+                    isExpanded ? 'text-xs sm:text-sm' : 'text-[10.5px] sm:text-[11px]'
+                  }`}
                 >
-                  <WeatherIcon
-                    cloudCoverPct={cloudCover}
-                    precipMm={pt.precipMm}
-                    fogRisk={pt.fogRisk}
-                    visibilityKm={pt.visibilityKm}
-                    time={pt.time}
-                    className={isExpanded ? 'w-5 h-5' : 'w-4 h-4'}
-                  />
-                  <span
-                    className={`font-bold tracking-tight text-slate-700 dark:text-slate-200 mt-0.5 ${
-                      isExpanded ? 'text-xs' : 'text-[10px]'
-                    }`}
-                  >
-                    {pt.time}
-                  </span>
-                </div>
-              )
-            })}
+                  {pt.time}
+                </span>
+              </div>
+            ))}
           </div>
 
           {/* Рядки даних для кожного ешелону */}
-          {activeLevels.map((alt) => (
-            <div
-              key={`row-${alt}`}
-              className={`flex border-b border-slate-200 dark:border-slate-700/60 bg-white dark:bg-transparent ${rowHeight}`}
-            >
-              {points.map((pt) => {
-                const levelData = pt.levels[alt]
-                if (!levelData) {
+          {activeLevels.map((alt) => {
+            const hasNoGusts = alt >= 800
+
+            return (
+              <div
+                key={`row-${alt}`}
+                className={`flex border-b border-slate-200 dark:border-slate-700/60 bg-white dark:bg-transparent ${rowHeight}`}
+              >
+                {points.map((pt) => {
+                  const levelData = pt.levels[alt]
+                  if (!levelData) {
+                    return (
+                      <div
+                        key={`data-${alt}-${pt.timestamp}`}
+                        style={{ width: `${colWidth}px` }}
+                        className="flex items-center justify-center border-r border-slate-200 dark:border-slate-800/80 text-slate-400 text-xs shrink-0"
+                      >
+                        —
+                      </div>
+                    )
+                  }
+
+                  // Нормалізований азимут напрямку вітру (куди дме)
+                  const normDeg = ((Math.round(levelData.directionDeg) % 360) + 360) % 360
+                  const speedVal = Math.round(levelData.speed)
+                  const gustVal = levelData.gusts !== undefined ? Math.round(levelData.gusts) : '—'
+
+                  // Оцінка безпеки вітру та поривів (5 рівнів градієнта)
+                  const windSev = evaluateWind(levelData.speed, warnings.wind)
+                  const gustSev = levelData.gusts !== undefined ? evaluateGusts(levelData.gusts, warnings.gusts) : 'ideal'
+
                   return (
                     <div
                       key={`data-${alt}-${pt.timestamp}`}
                       style={{ width: `${colWidth}px` }}
-                      className="flex items-center justify-center border-r border-slate-200 dark:border-slate-800/80 text-slate-400 text-xs shrink-0"
+                      className="flex items-center border-r border-slate-200 dark:border-slate-800/80 p-0.5 shrink-0"
                     >
-                      —
+                      {/* Ліва вузька комірка: Авіаційна стрілка напряму вітру (куди дме) + числовий азимут */}
+                      <div
+                        className={`flex flex-col items-center justify-center h-full shrink-0 border-r border-slate-200/80 dark:border-slate-700/70 bg-slate-50/70 dark:bg-slate-950/50 rounded-l-xs mr-0.5 ${
+                          isExpanded ? 'w-[42px] sm:w-[46px]' : 'w-[32px] sm:w-[35px]'
+                        }`}
+                        title={`Напрямок руху вітру на ${alt}м: ${normDeg}°`}
+                      >
+                        <AviationWindBarb
+                          speedMs={levelData.speed}
+                          directionDeg={normDeg}
+                          size={isExpanded ? 24 : 20}
+                          showText={true}
+                        />
+                      </div>
+
+                      {/* Права комірка:
+                          - Для 800-3000м: без поривів, суцільна комірка лише зі швидкістю вітру
+                          - Для <800м: діагональний поділ вітер / пориви */}
+                      <div className="flex-1 h-full min-w-0 flex items-center justify-center">
+                        {hasNoGusts ? (
+                          <div
+                            className={`w-full h-full flex items-center justify-center rounded-xs transition-colors select-none ${getSeverityCellClass(
+                              windSev
+                            )}`}
+                            title={`Ешелон ${alt}м - Вітер: ${speedVal} м/с (пориви відсутні на висотах ≥800м)`}
+                          >
+                            <span
+                              className={`font-bold font-mono ${
+                                isExpanded ? 'text-xs sm:text-sm' : 'text-[11px] sm:text-xs'
+                              }`}
+                            >
+                              {speedVal}
+                            </span>
+                          </div>
+                        ) : (
+                          <DiagonalSplitCell
+                            topValue={speedVal}
+                            topSeverity={windSev}
+                            topTitle={`Ешелон ${alt}м - Вітер: ${speedVal} м/с`}
+                            bottomValue={gustVal}
+                            bottomSeverity={gustSev}
+                            bottomTitle={`Ешелон ${alt}м - Пориви: ${gustVal !== '—' ? `${gustVal} м/с` : 'відсутні'}`}
+                            isExpanded={isExpanded}
+                          />
+                        )}
+                      </div>
                     </div>
                   )
-                }
-
-                // Нормалізований азимут напрямку вітру
-                const normDeg = ((Math.round(levelData.directionDeg) % 360) + 360) % 360
-                const speedVal = Math.round(levelData.speed)
-                const gustVal = levelData.gusts !== undefined ? Math.round(levelData.gusts) : '—'
-
-                // Оцінка безпеки вітру та поривів (5 рівнів градієнта)
-                const windSev = evaluateWind(levelData.speed, warnings.wind)
-                const gustSev = levelData.gusts !== undefined ? evaluateGusts(levelData.gusts, warnings.gusts) : 'ideal'
-
-                return (
-                  <div
-                    key={`data-${alt}-${pt.timestamp}`}
-                    style={{ width: `${colWidth}px` }}
-                    className="flex items-center border-r border-slate-200 dark:border-slate-800/80 p-0.5 shrink-0"
-                  >
-                    {/* Ліва вузька комірка: Напрям (стрілка) та азимут у градусах */}
-                    <div
-                      className={`flex flex-col items-center justify-center h-full shrink-0 border-r border-slate-200/80 dark:border-slate-700/70 bg-slate-50/70 dark:bg-slate-950/50 rounded-l-xs mr-0.5 ${
-                        isExpanded ? 'w-[36px] sm:w-[40px]' : 'w-[28px] sm:w-[30px]'
-                      }`}
-                      title={`Напрямок вітру на ${alt}м: ${normDeg}°`}
-                    >
-                      <Navigation
-                        className={`text-cyan-600 dark:text-cyan-400 shrink-0 transition-transform ${
-                          isExpanded ? 'w-3 h-3' : 'w-2.5 h-2.5'
-                        }`}
-                        style={{ transform: `rotate(${normDeg}deg)` }}
-                      />
-                      <span className="text-[8px] sm:text-[8.5px] font-mono font-semibold text-slate-600 dark:text-slate-300 mt-0.5 leading-none">
-                        {normDeg}°
-                      </span>
-                    </div>
-
-                    {/* Права ширша комірка: Вітер / Пориви з діагональним сплітом */}
-                    <div className="flex-1 h-full min-w-0">
-                      <DiagonalSplitCell
-                        topValue={speedVal}
-                        topSeverity={windSev}
-                        topTitle={`Ешелон ${alt}м - Вітер: ${speedVal} м/с`}
-                        bottomValue={gustVal}
-                        bottomSeverity={gustSev}
-                        bottomTitle={`Ешелон ${alt}м - Пориви: ${gustVal !== '—' ? `${gustVal} м/с` : 'відсутні'}`}
-                        isExpanded={isExpanded}
-                      />
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          ))}
+                })}
+              </div>
+            )
+          })}
         </div>
       </div>
     </div>
@@ -354,7 +378,7 @@ export const WindAltitudeCard: React.FC<WindAltitudeCardProps> = ({
             onClick={() => setIsModalOpen(false)}
           />
 
-          <div className="relative w-full max-w-7xl max-h-[92vh] bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700/80 rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
+          <div className="relative w-fit max-w-[95vw] lg:max-w-7xl max-h-[92vh] bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700/80 rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
             {/* Шапка модального вікна */}
             <div className="flex items-center justify-between px-4 sm:px-6 py-3.5 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/90 shrink-0">
               <div className="flex items-center gap-2.5">
@@ -381,7 +405,7 @@ export const WindAltitudeCard: React.FC<WindAltitudeCardProps> = ({
             </div>
 
             {/* Вміст модального вікна з розгорнутим гридом */}
-            <div className="flex-1 overflow-y-auto p-3 sm:p-5 flex flex-col min-h-0">
+            <div className="flex-1 overflow-y-auto p-3 sm:p-5 flex flex-col items-center sm:items-start min-h-0">
               <WindAltitudeGrid
                 points={filteredPoints}
                 activeLevels={activeLevels}
