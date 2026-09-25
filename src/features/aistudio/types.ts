@@ -1,14 +1,25 @@
-export interface AiGem {
+export interface AiProfile {
   id: string
   name: string
   role: string
-  iconName: string // 'sparkles' | 'cloud' | 'plane' | 'compass' | 'cpu' | 'shield' | 'bot'
-  color: string // Tailwind color accent, e.g. 'emerald', 'sky', 'indigo', 'amber', 'rose'
+  iconName: string // 'cloud' | 'plane' | 'compass' | 'cpu' | 'shield' | 'bot' | 'wind' | 'zap' | 'sparkles'
+  color: string // 'emerald' | 'sky' | 'indigo' | 'amber' | 'rose' | 'purple'
   description: string
-  systemPromptAddon: string // Окреме доповнення до глобальних інструкцій
-  suggestedPrompts: string[]
+  systemInstructions: string // Системні інструкції профілю
+  temperature?: number
   isBuiltIn?: boolean
   createdAt?: number
+}
+
+// Псевдонім для зворотної сумісності за потреби
+export type AiGem = AiProfile
+
+export interface AiChatGroup {
+  id: string
+  name: string
+  profileId?: string // Прив'язка до профілю (для автопапок)
+  isCustom?: boolean // Користувацька папка
+  createdAt: number
 }
 
 export interface AiMessageAttachment {
@@ -24,8 +35,8 @@ export interface AiMessage {
   role: 'user' | 'assistant' | 'system'
   content: string
   timestamp: number
-  gemId?: string
-  gemName?: string
+  profileId?: string
+  profileName?: string
   attachments?: AiMessageAttachment[]
   isError?: boolean
 }
@@ -35,35 +46,27 @@ export interface AiChatSession {
   title: string
   createdAt: number
   updatedAt: number
-  gemId: string // Current or initial Gem used
+  profileId: string // Профіль, з яким ведеться діалог
+  groupId?: string | null // null / 'root' — у корені чатів; інакше ID папки/групи
   messages: AiMessage[]
 }
 
-export interface AiStudioSettings {
-  webhookUrl: string
-  bearerToken: string
-  globalInstructions: string
-  defaultModel: string
-  temperature: number
-}
-
-export interface N8nAiStudioPayload {
+export interface N8nChatPayload {
+  chatInput: string
+  message: string
   sessionId: string
   sessionTitle: string
-  message: string
   history: Array<{
     role: 'user' | 'assistant'
     content: string
   }>
-  agent: {
+  profile: {
     id: string
     name: string
     role: string
-    systemPromptAddon: string
+    systemInstructions: string
   }
-  globalInstructions: string
-  effectiveSystemPrompt: string
-  model: string
+  systemInstructions: string
   temperature: number
   attachments?: Array<{
     name: string

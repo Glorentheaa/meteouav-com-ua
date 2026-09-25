@@ -1,36 +1,41 @@
 import React, { useState, useRef, useEffect } from 'react'
+import { Link } from 'react-router-dom'
 import {
-  Menu,
   ChevronDown,
   RotateCcw,
   Check,
+  Plus,
+  Edit2,
+  CloudSun,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from 'lucide-react'
-import { type AiGem } from '../types'
+import { type AiProfile } from '../types'
 import { GemIcon } from './GemIcon'
 import { ThemeSwitcher, type Theme } from '../../../components/common/ThemeSwitcher'
 
 interface AiStudioHeaderProps {
+  isSidebarOpen: boolean
   onToggleSidebar: () => void
-  activeGem: AiGem
-  gems: AiGem[]
-  onSelectGem: (gemId: string) => void
+  activeProfile: AiProfile
+  profiles: AiProfile[]
+  onSelectProfile: (profileId: string) => void
+  onOpenProfileManager: (profile?: AiProfile) => void
   onClearChat: () => void
   hasMessages: boolean
-  webhookUrl: string
-  onOpenSettings: () => void
   theme: Theme
   onThemeChange: (theme: Theme) => void
 }
 
 export const AiStudioHeader: React.FC<AiStudioHeaderProps> = ({
+  isSidebarOpen,
   onToggleSidebar,
-  activeGem,
-  gems,
-  onSelectGem,
+  activeProfile,
+  profiles,
+  onSelectProfile,
+  onOpenProfileManager,
   onClearChat,
   hasMessages,
-  webhookUrl,
-  onOpenSettings,
   theme,
   onThemeChange,
 }) => {
@@ -48,110 +53,159 @@ export const AiStudioHeader: React.FC<AiStudioHeaderProps> = ({
   }, [])
 
   return (
-    <header className="h-16 border-b border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md px-3 sm:px-6 flex items-center justify-between z-20 shrink-0">
-      {/* Ліва частина: Бургер (мобільний) + Селектор фахівця (Gemini model selector) */}
-      <div className="flex items-center gap-2.5">
+    <header className="h-16 border-b border-slate-300 dark:border-slate-800 bg-slate-200 dark:bg-slate-950 px-3 sm:px-5 flex items-center justify-between z-20 shrink-0 select-none">
+      {/* Ліва частина: Кнопка сайдбару + Логотип сайту з написом AI Studio + Селектор профілів */}
+      <div className="flex items-center gap-2 sm:gap-3.5 min-w-0">
+        {/* Кнопка розгортання/згортання панелі — доступна на всіх екранах! */}
         <button
           type="button"
           onClick={onToggleSidebar}
-          className="p-2 rounded-xl text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 md:hidden"
-          title="Меню"
+          className="p-1.5 sm:p-2 rounded-lg text-slate-700 hover:text-slate-900 dark:text-slate-300 dark:hover:text-slate-100 hover:bg-slate-300 dark:hover:bg-slate-800 transition-colors"
+          title={isSidebarOpen ? 'Згорнути панель чатів' : 'Розгорнути панель чатів'}
+          aria-label="Перемкнути бічну панель"
         >
-          <Menu className="w-5 h-5" />
+          {isSidebarOpen ? (
+            <PanelLeftClose className="w-5 h-5" />
+          ) : (
+            <PanelLeftOpen className="w-5 h-5 text-emerald-500" />
+          )}
         </button>
 
-        {/* Dropdown перемикання фахівця (Gem) */}
+        {/* Логотип у стилі сайту з додаванням AI Studio */}
+        <Link
+          to="/app"
+          className="flex items-center gap-2 font-logo select-none hover:opacity-85 transition-opacity shrink-0"
+          title="Повернутися до MeteoUAV"
+        >
+          <CloudSun className="text-emerald-500 shrink-0 w-6 h-6 sm:w-7 sm:h-7" />
+          <span className="text-base sm:text-xl tracking-wide flex items-center gap-1 sm:gap-1.5">
+            <span className="text-slate-700 dark:text-slate-400 font-semibold">Meteo</span>
+            <span className="text-emerald-500 font-extrabold">UAV</span>
+            <span className="text-slate-400 dark:text-slate-600 font-light hidden xs:inline">|</span>
+            <span className="text-slate-800 dark:text-slate-200 font-bold tracking-tight text-xs sm:text-base hidden xs:inline">
+              AI Studio
+            </span>
+          </span>
+        </Link>
+
+        {/* Спадне меню: Профілі (Profiles Dropdown) */}
         <div className="relative" ref={dropdownRef}>
           <button
             type="button"
             onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-100 hover:bg-slate-200/80 dark:bg-slate-800 dark:hover:bg-slate-700/80 border border-slate-300 dark:border-slate-700 transition-all text-xs sm:text-sm font-semibold text-slate-800 dark:text-slate-100 shadow-2xs"
+            className="flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1.5 rounded-xl bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-300 dark:border-slate-800 transition-all text-xs sm:text-sm font-semibold text-slate-800 dark:text-slate-100 shadow-2xs"
+            title="Оберіть активний профіль або налаштуйте його"
           >
-            <div className="p-1 rounded-full bg-sky-500 text-white shrink-0">
-              <GemIcon iconName={activeGem.iconName} className="w-3.5 h-3.5" />
+            <div className="p-1 rounded-md bg-emerald-500 text-white shrink-0">
+              <GemIcon iconName={activeProfile.iconName} className="w-3.5 h-3.5" />
             </div>
-            <span className="truncate max-w-[130px] sm:max-w-[200px]">{activeGem.name}</span>
-            <span className="text-[10px] font-normal text-slate-500 dark:text-slate-400 hidden sm:inline">
-              (Gem)
+            <span className="truncate max-w-[100px] sm:max-w-[180px]">
+              {activeProfile.name}
             </span>
-            <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+            <span className="text-[10px] font-normal text-slate-500 dark:text-slate-400 hidden md:inline">
+              (Профіль)
+            </span>
+            <ChevronDown className="w-3.5 h-3.5 text-slate-400 shrink-0" />
           </button>
 
           {isDropdownOpen && (
-            <div className="absolute top-full left-0 mt-2 w-72 sm:w-80 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-xl p-2 z-50 animate-in fade-in zoom-in-95 duration-150">
-              <div className="px-2.5 py-1.5 text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                Оберіть фахівця для сесії:
+            <div className="absolute top-full left-0 mt-2 w-72 sm:w-80 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-800 rounded-2xl shadow-xl p-2 z-50 animate-in fade-in zoom-in-95 duration-150">
+              <div className="flex items-center justify-between px-2.5 py-1.5 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                <span>Профілі</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsDropdownOpen(false)
+                    onOpenProfileManager()
+                  }}
+                  className="flex items-center gap-1 text-[11px] font-medium text-emerald-600 dark:text-emerald-400 hover:underline capitalize"
+                >
+                  <Plus className="w-3 h-3" />
+                  <span>Новий</span>
+                </button>
               </div>
-              <div className="max-h-64 overflow-y-auto space-y-1">
-                {gems.map((g) => {
-                  const isSelected = g.id === activeGem.id
+
+              {/* Список профілів */}
+              <div className="max-h-64 overflow-y-auto space-y-1 my-1">
+                {profiles.map((p) => {
+                  const isSelected = p.id === activeProfile.id
                   return (
-                    <button
-                      key={g.id}
-                      type="button"
+                    <div
+                      key={p.id}
                       onClick={() => {
-                        onSelectGem(g.id)
+                        onSelectProfile(p.id)
                         setIsDropdownOpen(false)
                       }}
-                      className={`w-full flex items-start gap-2.5 p-2 rounded-xl text-left transition-colors ${
+                      className={`group w-full flex items-center justify-between gap-2 p-2 rounded-xl text-left cursor-pointer transition-colors ${
                         isSelected
-                          ? 'bg-sky-500/10 text-sky-700 dark:text-sky-300'
-                          : 'hover:bg-slate-100 dark:hover:bg-slate-700/60 text-slate-700 dark:text-slate-200'
+                          ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300'
+                          : 'hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200'
                       }`}
                     >
-                      <div className="p-1.5 rounded-lg bg-slate-200 dark:bg-slate-700 shrink-0 mt-0.5">
-                        <GemIcon iconName={g.iconName} className="w-4 h-4 text-sky-600 dark:text-sky-400" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between">
-                          <p className="text-xs font-semibold truncate">{g.name}</p>
-                          {isSelected && <Check className="w-3.5 h-3.5 text-sky-500 shrink-0" />}
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="p-1.5 rounded-lg bg-slate-200 dark:bg-slate-800 text-emerald-600 dark:text-emerald-400 shrink-0">
+                          <GemIcon iconName={p.iconName} className="w-4 h-4" />
                         </div>
-                        <p className="text-[11px] text-slate-500 dark:text-slate-400 line-clamp-1">
-                          {g.description}
-                        </p>
+                        <div className="min-w-0">
+                          <p className="text-xs font-semibold truncate">{p.name}</p>
+                          <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
+                            {p.role}
+                          </p>
+                        </div>
                       </div>
-                    </button>
+
+                      <div className="flex items-center gap-1 shrink-0">
+                        {isSelected && <Check className="w-3.5 h-3.5 text-emerald-500" />}
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setIsDropdownOpen(false)
+                            onOpenProfileManager(p)
+                          }}
+                          className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-opacity"
+                          title="Редагувати системні інструкції"
+                        >
+                          <Edit2 className="w-3 h-3" />
+                        </button>
+                      </div>
+                    </div>
                   )
                 })}
+              </div>
+
+              {/* Нижня кнопка швидкого редагування активного профілю */}
+              <div className="pt-2 border-t border-slate-200 dark:border-slate-800 flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsDropdownOpen(false)
+                    onOpenProfileManager(activeProfile)
+                  }}
+                  className="w-full text-center py-1.5 rounded-lg text-xs font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors flex items-center justify-center gap-1.5"
+                >
+                  <Edit2 className="w-3 h-3" />
+                  <span>Налаштувати системні інструкції: {activeProfile.name}</span>
+                </button>
               </div>
             </div>
           )}
         </div>
       </div>
 
-      {/* Права частина: Статус зв'язку + Очищення + Перемикач теми */}
+      {/* Права частина: Очистити чат + Тема */}
       <div className="flex items-center gap-2 sm:gap-3">
-        {/* Індикатор n8n або локальної емуляції */}
-        <button
-          type="button"
-          onClick={onOpenSettings}
-          className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border transition-colors ${
-            webhookUrl
-              ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/20'
-              : 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20 hover:bg-amber-500/20'
-          }`}
-          title={webhookUrl ? `n8n підключено: ${webhookUrl}` : 'Локальний симуляційний режим (натисніть для налаштування n8n)'}
-        >
-          <span className={`w-2 h-2 rounded-full ${webhookUrl ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`} />
-          <span className="hidden md:inline">
-            {webhookUrl ? 'n8n активний' : 'Локальний режим'}
-          </span>
-        </button>
-
-        {/* Очищення поточної розмови */}
         {hasMessages && (
           <button
             type="button"
             onClick={onClearChat}
-            className="p-1.5 rounded-lg text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+            className="p-1.5 rounded-lg text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-300/70 dark:hover:bg-slate-800 transition-colors"
             title="Очистити поточний діалог"
           >
             <RotateCcw className="w-4 h-4" />
           </button>
         )}
 
-        {/* Перемикач теми */}
         <ThemeSwitcher theme={theme} onThemeChange={onThemeChange} />
       </div>
     </header>

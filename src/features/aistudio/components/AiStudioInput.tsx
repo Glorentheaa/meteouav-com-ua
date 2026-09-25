@@ -7,14 +7,14 @@ import {
   FileText,
   Image as ImageIcon,
 } from 'lucide-react'
-import { type AiGem, type AiMessageAttachment } from '../types'
+import { type AiProfile, type AiMessageAttachment } from '../types'
 import { GemIcon } from './GemIcon'
 
 interface AiStudioInputProps {
   onSendMessage: (text: string, attachments: AiMessageAttachment[]) => void
   onStopGeneration?: () => void
   isGenerating: boolean
-  activeGem: AiGem
+  activeProfile: AiProfile
   disabled?: boolean
   inputRef?: React.RefObject<HTMLTextAreaElement | null>
 }
@@ -23,7 +23,7 @@ export const AiStudioInput: React.FC<AiStudioInputProps> = ({
   onSendMessage,
   onStopGeneration,
   isGenerating,
-  activeGem,
+  activeProfile,
   disabled = false,
   inputRef: externalInputRef,
 }) => {
@@ -89,26 +89,26 @@ export const AiStudioInput: React.FC<AiStudioInputProps> = ({
 
   return (
     <div className="w-full max-w-4xl mx-auto px-3 sm:px-6 pb-4">
-      {/* Контейнер форми Gemini */}
-      <div className="relative bg-slate-100/90 dark:bg-slate-800/90 border border-slate-300 dark:border-slate-700/80 rounded-3xl shadow-lg focus-within:ring-2 focus-within:ring-sky-500/50 focus-within:border-sky-500 transition-all backdrop-blur-md overflow-hidden">
-        {/* Прикріплені файли (прев'ю чіпси) */}
+      {/* Контейнер форми введення */}
+      <div className="relative bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-800 rounded-2xl sm:rounded-3xl shadow-md focus-within:ring-2 focus-within:ring-emerald-500/40 focus-within:border-emerald-500 transition-all overflow-hidden">
+        {/* Прикріплені файли */}
         {attachments.length > 0 && (
-          <div className="flex flex-wrap gap-2 px-4 pt-3 pb-1 border-b border-slate-200 dark:border-slate-700/60">
+          <div className="flex flex-wrap gap-2 px-4 pt-3 pb-1 border-b border-slate-200 dark:border-slate-800">
             {attachments.map((file) => (
               <div
                 key={file.id}
-                className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-xs text-slate-800 dark:text-slate-200 shadow-2xs"
+                className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-800 dark:text-slate-200 shadow-2xs"
               >
                 {file.type.startsWith('image/') ? (
-                  <ImageIcon className="w-3.5 h-3.5 text-sky-500" />
+                  <ImageIcon className="w-3.5 h-3.5 text-emerald-500" />
                 ) : (
-                  <FileText className="w-3.5 h-3.5 text-indigo-500" />
+                  <FileText className="w-3.5 h-3.5 text-emerald-500" />
                 )}
                 <span className="max-w-[120px] truncate">{file.name}</span>
                 <button
                   type="button"
                   onClick={() => removeAttachment(file.id)}
-                  className="p-0.5 rounded-full hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                  className="p-0.5 rounded-full hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
                 >
                   <X className="w-3 h-3" />
                 </button>
@@ -126,14 +126,14 @@ export const AiStudioInput: React.FC<AiStudioInputProps> = ({
             value={text}
             onChange={(e) => setText(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder={`Запитайте ${activeGem.name} про погоду, вітер, польоти...`}
+            placeholder={`Запитайте ${activeProfile.name}...`}
             className="w-full bg-transparent resize-none border-none outline-none text-slate-900 dark:text-slate-100 placeholder-slate-400 text-sm sm:text-base leading-relaxed max-h-44"
           />
         </div>
 
-        {/* Нижня панель інструментів інпуту */}
+        {/* Нижня панель дій */}
         <div className="flex items-center justify-between px-3 pb-2.5 pt-1">
-          {/* Ліва частина: Кнопка прикріплення + Чіп поточного фахівця */}
+          {/* Ліва частина: Прикріплення файлу + Бейдж активного профілю */}
           <div className="flex items-center gap-2">
             <input
               ref={fileInputRef}
@@ -145,20 +145,20 @@ export const AiStudioInput: React.FC<AiStudioInputProps> = ({
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              className="p-2 rounded-full text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-200/60 dark:hover:bg-slate-700/60 transition-colors"
-              title="Прикріпити файл або лог польоту"
+              className="p-2 rounded-xl text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+              title="Прикріпити файл або лог"
             >
               <Paperclip className="w-4 h-4" />
             </button>
 
-            {/* Чіп активного агента */}
-            <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-sky-500/10 text-sky-700 dark:text-sky-300 text-xs font-medium border border-sky-500/20">
-              <GemIcon iconName={activeGem.iconName} className="w-3 h-3" />
-              <span>{activeGem.name}</span>
+            {/* Бейдж обраного профілю */}
+            <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 text-xs font-semibold border border-emerald-500/20">
+              <GemIcon iconName={activeProfile.iconName} className="w-3 h-3" />
+              <span>{activeProfile.name}</span>
             </div>
           </div>
 
-          {/* Права частина: Кнопка відправки або зупинки генерації */}
+          {/* Права частина: Кнопка відправки */}
           <div>
             {isGenerating ? (
               <button
@@ -174,10 +174,10 @@ export const AiStudioInput: React.FC<AiStudioInputProps> = ({
                 type="button"
                 onClick={handleSubmit}
                 disabled={(!text.trim() && attachments.length === 0) || disabled}
-                className={`p-2 sm:p-2.5 rounded-full transition-all ${
+                className={`p-2 sm:p-2.5 rounded-xl transition-all ${
                   text.trim() || attachments.length > 0
-                    ? 'bg-gradient-to-r from-sky-500 to-indigo-600 text-white shadow-md shadow-sky-500/25 hover:scale-105 active:scale-95'
-                    : 'bg-slate-300/60 dark:bg-slate-700/50 text-slate-400 dark:text-slate-500 cursor-not-allowed'
+                    ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-md shadow-emerald-600/20 hover:scale-105 active:scale-95'
+                    : 'bg-slate-300/60 dark:bg-slate-800 text-slate-400 dark:text-slate-600 cursor-not-allowed'
                 }`}
                 title="Відправити повідомлення (Enter)"
               >
@@ -188,8 +188,8 @@ export const AiStudioInput: React.FC<AiStudioInputProps> = ({
         </div>
       </div>
 
-      {/* Дисклеймер внизу сторінки як у Gemini */}
-      <p className="text-[11px] text-center text-slate-400 dark:text-slate-500 mt-2 px-2">
+      {/* Дисклеймер у стилі сайту */}
+      <p className="text-[11px] text-center text-slate-500 dark:text-slate-400 mt-2 px-2">
         AI Studio може припускатися неточностей. Обов'язково перевіряйте критичні метеодані перед польотом.
       </p>
     </div>

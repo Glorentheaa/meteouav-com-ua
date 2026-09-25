@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { Navigate } from 'react-router-dom'
-import { Loader2, Sparkles } from 'lucide-react'
+import { Loader2, CloudSun } from 'lucide-react'
 import { useAuth } from '../context/useAuth'
 import {
-  type AiGem,
+  type AiProfile,
   type AiChatSession,
-  type AiStudioSettings,
+  type AiChatGroup,
   type AiMessage,
   type AiMessageAttachment,
 } from '../features/aistudio/types'
@@ -17,14 +17,13 @@ import { AiStudioSidebar } from '../features/aistudio/components/AiStudioSidebar
 import { AiStudioHeader } from '../features/aistudio/components/AiStudioHeader'
 import { AiStudioChatArea } from '../features/aistudio/components/AiStudioChatArea'
 import { AiStudioInput } from '../features/aistudio/components/AiStudioInput'
-import { AiStudioSettingsModal } from '../features/aistudio/components/AiStudioSettingsModal'
-import { GemManagerModal } from '../features/aistudio/components/GemManagerModal'
+import { ProfileManagerModal } from '../features/aistudio/components/ProfileManagerModal'
 import { type Theme } from '../components/common/ThemeSwitcher'
 
 export const AiStudio: React.FC = () => {
   const { user, profile, loading: authLoading } = useAuth()
 
-  // Тема
+  // Керування темою
   const [theme, setTheme] = useState<Theme>(() => {
     return (localStorage.getItem('theme') as Theme) || 'system'
   })
@@ -44,7 +43,7 @@ export const AiStudio: React.FC = () => {
     }
   }, [theme])
 
-  // Бічна панель: за замовчуванням відкрита на десктопі
+  // Бічна панель: відкрита за замовчуванням на екранах від 1024px
   const [isSidebarOpen, setIsSidebarOpen] = useState(() => {
     if (typeof window !== 'undefined') {
       return window.innerWidth >= 1024
@@ -52,13 +51,15 @@ export const AiStudio: React.FC = () => {
     return true
   })
 
-  // Стан даних AI Studio
-  const [settings, setSettings] = useState<AiStudioSettings>(() =>
-    AiStudioStorage.getSettings()
+  // Стан даних
+  const [profiles, setProfiles] = useState<AiProfile[]>(() =>
+    AiStudioStorage.getProfiles()
   )
-  const [gems, setGems] = useState<AiGem[]>(() => AiStudioStorage.getGems())
-  const [activeGemId, setActiveGemId] = useState<string>(() =>
-    AiStudioStorage.getActiveGemId()
+  const [activeProfileId, setActiveProfileId] = useState<string>(() =>
+    AiStudioStorage.getActiveProfileId()
+  )
+  const [groups, setGroups] = useState<AiChatGroup[]>(() =>
+    AiStudioStorage.getGroups()
   )
   const [sessions, setSessions] = useState<AiChatSession[]>(() =>
     AiStudioStorage.getSessions()
@@ -67,33 +68,33 @@ export const AiStudio: React.FC = () => {
     AiStudioStorage.getActiveSessionId()
   )
 
-  // Модальні вікна
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false)
-  const [isGemManagerOpen, setIsGemManagerOpen] = useState(false)
-  const [gemToEdit, setGemToEdit] = useState<AiGem | null>(null)
+  // Модальне вікно редагування / створення профілю
+  const [isProfileManagerOpen, setIsProfileManagerOpen] = useState(false)
+  const [profileToEdit, setProfileToEdit] = useState<AiProfile | null>(null)
 
-  // Стан запиту
+  // Стан генерації
   const [isGenerating, setIsGenerating] = useState(false)
   const inputRef = useRef<HTMLTextAreaElement>(null)
 
-  // Отримуємо активного фахівця
-  const activeGem = gems.find((g) => g.id === activeGemId) || gems[0]
+  // Активний профіль
+  const activeProfile =
+    profiles.find((p) => p.id === activeProfileId) || profiles[0]
 
-  // Отримуємо активну сесію
-  const activeSession = sessions.find((s) => s.id === activeSessionId) || null
+  // Активна сесія
+  const activeSession =
+    sessions.find((s) => s.id === activeSessionId) || null
   const currentMessages = activeSession?.messages || []
 
-  // Зміна фахівця
-  const handleSelectGem = (gemId: string) => {
-    setActiveGemId(gemId)
-    AiStudioStorage.setActiveGemId(gemId)
+  // Зміна активного профілю
+  const handleSelectProfile = (profileId: string) => {
+    setActiveProfileId(profileId)
+    AiStudioStorage.setActiveProfileId(profileId)
   }
 
-  // Створення нової сесії
+  // Новий чат (скидання активної сесії до початкового стану)
   const handleNewSession = () => {
     setActiveSessionId(null)
     AiStudioStorage.setActiveSessionId(null)
-    // Фокус на поле вводу
     setTimeout(() => {
       inputRef.current?.focus()
     }, 100)
@@ -104,9 +105,9 @@ export const AiStudio: React.FC = () => {
     setActiveSessionId(sessionId)
     AiStudioStorage.setActiveSessionId(sessionId)
     const session = sessions.find((s) => s.id === sessionId)
-    if (session && session.gemId) {
-      setActiveGemId(session.gemId)
-      AiStudioStorage.setActiveGemId(session.gemId)
+    if (session && session.profileId) {
+      setActiveProfileId(session.profileId)
+      AiStudioStorage.setActiveProfileId(session.profileId)
     }
   }
 
@@ -130,6 +131,31 @@ export const AiStudio: React.FC = () => {
     }
   }
 
+  // Переміщення сесії в іншу папку / корінь
+  const handleMoveSession = (sessionId: string, targetGroupId: string | null) => {
+    const updatedList = AiStudioStorage.moveSessionToGroup(sessionId, targetGroupId)
+    setSessions(updatedList)
+  }
+
+  // Створення кастомної групи/папки
+  const handleCreateGroup = (name: string) => {
+    const updated = AiStudioStorage.createGroup(name)
+    setGroups(updated)
+  }
+
+  // Перейменування групи
+  const handleRenameGroup = (groupId: string, newName: string) => {
+    const updated = AiStudioStorage.renameGroup(groupId, newName)
+    setGroups(updated)
+  }
+
+  // Видалення групи
+  const handleDeleteGroup = (groupId: string) => {
+    const updatedGroups = AiStudioStorage.deleteGroup(groupId)
+    setGroups(updatedGroups)
+    setSessions(AiStudioStorage.getSessions())
+  }
+
   // Очищення поточного діалогу
   const handleClearChat = () => {
     if (!activeSessionId) return
@@ -147,49 +173,50 @@ export const AiStudio: React.FC = () => {
     }
   }
 
-  // Збереження фахівця
-  const handleSaveGem = (gem: AiGem) => {
-    const updated = AiStudioStorage.saveCustomGem(gem)
-    setGems(updated)
-    setActiveGemId(gem.id)
-    AiStudioStorage.setActiveGemId(gem.id)
+  // Збереження профілю
+  const handleSaveProfile = (p: AiProfile) => {
+    const updated = AiStudioStorage.saveProfile(p)
+    setProfiles(updated)
+    setActiveProfileId(p.id)
+    AiStudioStorage.setActiveProfileId(p.id)
   }
 
-  // Видалення фахівця
-  const handleDeleteGem = (gemId: string) => {
-    const updated = AiStudioStorage.deleteCustomGem(gemId)
-    setGems(updated)
-    if (activeGemId === gemId) {
-      setActiveGemId(updated[0].id)
-      AiStudioStorage.setActiveGemId(updated[0].id)
+  // Видалення профілю
+  const handleDeleteProfile = (profileId: string) => {
+    const updated = AiStudioStorage.deleteProfile(profileId)
+    setProfiles(updated)
+    if (activeProfileId === profileId) {
+      setActiveProfileId(updated[0].id)
+      AiStudioStorage.setActiveProfileId(updated[0].id)
     }
   }
 
-  // Збереження налаштувань n8n
-  const handleSaveSettings = (newSettings: AiStudioSettings) => {
-    setSettings(newSettings)
-    AiStudioStorage.saveSettings(newSettings)
-  }
-
-  // Відправка повідомлення
+  // Відправка повідомлення на n8n webhook
   const handleSendMessage = async (
     text: string,
     attachments: AiMessageAttachment[] = []
   ) => {
     if (!text.trim() && attachments.length === 0) return
 
-    // Якщо сесії ще немає — створюємо нову
     let currentSession = activeSession
     let currentSessionId = activeSessionId
 
+    // Якщо сесії ще немає — створюємо нову
     if (!currentSession) {
-      const title = text.trim().slice(0, 45) || 'Нова сесія'
+      const title = text.trim().slice(0, 45) || 'Новий діалог'
+      // Логіка: базова модель лишається в корені (null), інші профілі — у своїй автопапці
+      const defaultGroupId =
+        activeProfile.id === 'general-profile'
+          ? null
+          : `profile_${activeProfile.id}`
+
       const newSession: AiChatSession = {
         id: `session_${Date.now()}`,
         title,
         createdAt: Date.now(),
         updatedAt: Date.now(),
-        gemId: activeGem.id,
+        profileId: activeProfile.id,
+        groupId: defaultGroupId,
         messages: [],
       }
       currentSession = newSession
@@ -213,17 +240,15 @@ export const AiStudio: React.FC = () => {
       updatedAt: Date.now(),
     }
 
-    // Оновлюємо стан відразу для миттєвого відображення
     const updatedList = AiStudioStorage.saveSession(updatedSessionWithUser)
     setSessions(updatedList)
 
-    // Запускаємо генерацію відповіді
     setIsGenerating(true)
 
     try {
       const response = await sendAiStudioMessage({
         session: updatedSessionWithUser,
-        gem: activeGem,
+        profile: activeProfile,
         userMessage: text,
         attachments: attachments.map((a) => ({
           name: a.name,
@@ -245,8 +270,8 @@ export const AiStudio: React.FC = () => {
         role: 'assistant',
         content: response.text,
         timestamp: Date.now(),
-        gemId: activeGem.id,
-        gemName: activeGem.name,
+        profileId: activeProfile.id,
+        profileName: activeProfile.name,
       }
 
       const finalSession: AiChatSession = {
@@ -262,10 +287,10 @@ export const AiStudio: React.FC = () => {
       const errorMessage: AiMessage = {
         id: `msg_err_${Date.now()}`,
         role: 'assistant',
-        content: `⚠️ **Помилка отримання відповіді**:\n\n${errorMsg}\n\n*Перевірте налаштування вебхука n8n або доступність мережі в налаштуваннях ⚙️.*`,
+        content: `⚠️ **Помилка з'єднання з n8n**:\n\n${errorMsg}`,
         timestamp: Date.now(),
-        gemId: activeGem.id,
-        gemName: activeGem.name,
+        profileId: activeProfile.id,
+        profileName: activeProfile.name,
         isError: true,
       }
 
@@ -282,64 +307,59 @@ export const AiStudio: React.FC = () => {
     }
   }
 
-  // Обробка кліку на швидку підказку зі стартового екрану
-  const handleSelectPrompt = (prompt: string) => {
-    handleSendMessage(prompt, [])
-  }
-
-  // --- ЗАХИСТ СТОРІНКИ (Тільки після авторизації) ---
+  // Захист сторінки (тільки після успішного входу)
   if (authLoading) {
     return (
-      <div className="h-screen w-screen flex flex-col items-center justify-center bg-slate-900 text-slate-100">
-        <div className="p-3 rounded-2xl bg-sky-500/10 text-sky-400 mb-4 animate-pulse">
-          <Sparkles className="w-8 h-8" />
+      <div className="h-screen w-screen flex flex-col items-center justify-center bg-slate-200 dark:bg-slate-950 text-slate-800 dark:text-slate-200">
+        <div className="p-3 rounded-2xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-800 shadow text-emerald-500 mb-4 animate-pulse">
+          <CloudSun className="w-8 h-8" />
         </div>
-        <Loader2 className="w-6 h-6 animate-spin text-sky-400 mb-2" />
-        <p className="text-sm text-slate-400">Перевірка автентифікації AI Studio...</p>
+        <Loader2 className="w-6 h-6 animate-spin text-emerald-500 mb-2" />
+        <p className="text-sm text-slate-500">Авторизація AI Studio...</p>
       </div>
     )
   }
 
-  // Якщо користувач не увійшов у систему — блокуємо доступ та перенаправляємо на /auth
   if (!user) {
     return <Navigate to="/auth" replace />
   }
 
   return (
-    <div className="h-screen w-screen flex overflow-hidden bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 antialiased font-sans">
-      {/* Ліва бічна панель (Gemini Sidebar) */}
+    <div className="h-screen w-screen flex overflow-hidden bg-slate-200 dark:bg-slate-950 text-slate-900 dark:text-slate-100 antialiased font-sans">
+      {/* Ліва бічна панель (Сортування чатів, папки, групи) */}
       <AiStudioSidebar
         isOpen={isSidebarOpen}
         onToggleOpen={() => setIsSidebarOpen(!isSidebarOpen)}
-        gems={gems}
-        activeGemId={activeGemId}
-        onSelectGem={handleSelectGem}
-        onOpenGemManager={(gem) => {
-          setGemToEdit(gem || null)
-          setIsGemManagerOpen(true)
-        }}
+        profiles={profiles}
         sessions={sessions}
+        groups={groups}
         activeSessionId={activeSessionId}
         onSelectSession={handleSelectSession}
         onNewSession={handleNewSession}
         onDeleteSession={handleDeleteSession}
         onRenameSession={handleRenameSession}
-        onOpenSettings={() => setIsSettingsOpen(true)}
+        onMoveSession={handleMoveSession}
+        onCreateGroup={handleCreateGroup}
+        onRenameGroup={handleRenameGroup}
+        onDeleteGroup={handleDeleteGroup}
         userProfile={profile}
       />
 
-      {/* Головна робоча зона */}
+      {/* Головна робоча область */}
       <div className="flex-1 flex flex-col min-w-0 h-full relative">
         {/* Верхній заголовок */}
         <AiStudioHeader
+          isSidebarOpen={isSidebarOpen}
           onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
-          activeGem={activeGem}
-          gems={gems}
-          onSelectGem={handleSelectGem}
+          activeProfile={activeProfile}
+          profiles={profiles}
+          onSelectProfile={handleSelectProfile}
+          onOpenProfileManager={(p) => {
+            setProfileToEdit(p || null)
+            setIsProfileManagerOpen(true)
+          }}
           onClearChat={handleClearChat}
           hasMessages={currentMessages.length > 0}
-          webhookUrl={settings.webhookUrl}
-          onOpenSettings={() => setIsSettingsOpen(true)}
           theme={theme}
           onThemeChange={setTheme}
         />
@@ -347,41 +367,30 @@ export const AiStudio: React.FC = () => {
         {/* Область повідомлень */}
         <AiStudioChatArea
           messages={currentMessages}
-          activeGem={activeGem}
+          activeProfile={activeProfile}
           userName={profile?.nickname || user.email?.split('@')[0] || 'Пілоте'}
           userAvatar={profile?.avatar_url}
           isGenerating={isGenerating}
-          onSelectPrompt={handleSelectPrompt}
-          onCopyMessage={(_text) => {
-            // Опціональний тост або зворотний зв'язок
-          }}
+          onCopyMessage={(_text) => {}}
         />
 
-        {/* Плаваюче поле введення Gemini */}
+        {/* Поле введення */}
         <AiStudioInput
           inputRef={inputRef}
           onSendMessage={handleSendMessage}
           onStopGeneration={() => setIsGenerating(false)}
           isGenerating={isGenerating}
-          activeGem={activeGem}
+          activeProfile={activeProfile}
         />
       </div>
 
-      {/* Модальне вікно налаштувань n8n та моделі */}
-      <AiStudioSettingsModal
-        isOpen={isSettingsOpen}
-        onClose={() => setIsSettingsOpen(false)}
-        settings={settings}
-        onSave={handleSaveSettings}
-      />
-
-      {/* Модальне вікно створення/редагування фахівця (Gems) */}
-      <GemManagerModal
-        isOpen={isGemManagerOpen}
-        onClose={() => setIsGemManagerOpen(false)}
-        initialGem={gemToEdit}
-        onSaveGem={handleSaveGem}
-        onDeleteGem={handleDeleteGem}
+      {/* Модальне вікно створення / редагування профілю */}
+      <ProfileManagerModal
+        isOpen={isProfileManagerOpen}
+        onClose={() => setIsProfileManagerOpen(false)}
+        initialProfile={profileToEdit}
+        onSaveProfile={handleSaveProfile}
+        onDeleteProfile={handleDeleteProfile}
       />
     </div>
   )

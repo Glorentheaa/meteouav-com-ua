@@ -3,35 +3,42 @@ import { Link } from 'react-router-dom'
 import {
   Plus,
   MessageSquare,
-  Sparkles,
-  Settings as SettingsIcon,
-  Bot,
-  ChevronLeft,
+  ChevronDown,
   ChevronRight,
+  Folder,
+  FolderPlus,
+  FolderOpen,
   Trash2,
   Edit2,
   ArrowLeft,
   Check,
   X,
+  CornerDownRight,
+  PanelLeftClose,
 } from 'lucide-react'
-import { type AiGem, type AiChatSession } from '../types'
+import {
+  type AiProfile,
+  type AiChatSession,
+  type AiChatGroup,
+} from '../types'
 import { GemIcon } from './GemIcon'
 import { getInitials } from '../../../utils/gravatar'
 
 interface AiStudioSidebarProps {
   isOpen: boolean
   onToggleOpen: () => void
-  gems: AiGem[]
-  activeGemId: string
-  onSelectGem: (gemId: string) => void
-  onOpenGemManager: (gem?: AiGem) => void
+  profiles: AiProfile[]
   sessions: AiChatSession[]
+  groups: AiChatGroup[]
   activeSessionId: string | null
   onSelectSession: (sessionId: string) => void
   onNewSession: () => void
   onDeleteSession: (sessionId: string) => void
   onRenameSession: (sessionId: string, newTitle: string) => void
-  onOpenSettings: () => void
+  onMoveSession: (sessionId: string, targetGroupId: string | null) => void
+  onCreateGroup: (name: string) => void
+  onRenameGroup: (groupId: string, newName: string) => void
+  onDeleteGroup: (groupId: string) => void
   userProfile?: {
     nickname?: string | null
     avatar_url?: string | null
@@ -42,315 +49,403 @@ interface AiStudioSidebarProps {
 export const AiStudioSidebar: React.FC<AiStudioSidebarProps> = ({
   isOpen,
   onToggleOpen,
-  gems,
-  activeGemId,
-  onSelectGem,
-  onOpenGemManager,
+  profiles,
   sessions,
+  groups,
   activeSessionId,
   onSelectSession,
   onNewSession,
   onDeleteSession,
   onRenameSession,
-  onOpenSettings,
+  onMoveSession,
+  onCreateGroup,
+  onRenameGroup,
+  onDeleteGroup,
   userProfile,
 }) => {
+  // Стани редагування
   const [editingSessionId, setEditingSessionId] = useState<string | null>(null)
-  const [editingTitle, setEditingTitle] = useState('')
+  const [editingSessionTitle, setEditingSessionTitle] = useState('')
+  const [isCreatingFolder, setIsCreatingFolder] = useState(false)
+  const [newFolderName, setNewFolderName] = useState('')
+  const [editingGroupId, setEditingGroupId] = useState<string | null>(null)
+  const [editingGroupTitle, setEditingGroupTitle] = useState('')
+  const [movingSessionId, setMovingSessionId] = useState<string | null>(null)
 
-  // Групування сесій: Сьогодні, Вчора, Раніше
-  const now = new Date()
-  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()
-  const yesterdayStart = todayStart - 24 * 60 * 60 * 1000
+  // Стан згорнутих папок (за замовчуванням усі відкриті)
+  const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({})
 
-  const todaySessions = sessions.filter((s) => s.updatedAt >= todayStart)
-  const yesterdaySessions = sessions.filter(
-    (s) => s.updatedAt >= yesterdayStart && s.updatedAt < todayStart
-  )
-  const olderSessions = sessions.filter((s) => s.updatedAt < yesterdayStart)
-
-  const handleStartRename = (session: AiChatSession, e: React.MouseEvent) => {
-    e.stopPropagation()
-    setEditingSessionId(session.id)
-    setEditingTitle(session.title)
+  const toggleGroupCollapse = (groupId: string) => {
+    setCollapsedGroups((prev) => ({
+      ...prev,
+      [groupId]: !prev[groupId],
+    }))
   }
 
-  const handleSaveRename = (sessionId: string, e: React.MouseEvent | React.FormEvent) => {
+  // Обробка створення кастомної папки
+  const handleCreateGroupSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (newFolderName.trim()) {
+      onCreateGroup(newFolderName.trim())
+      setNewFolderName('')
+      setIsCreatingFolder(false)
+    }
+  }
+
+  // Обробка збереження назви чату
+  const handleSaveSessionRename = (sessionId: string, e: React.FormEvent | React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
-    if (editingTitle.trim()) {
-      onRenameSession(sessionId, editingTitle.trim())
+    if (editingSessionTitle.trim()) {
+      onRenameSession(sessionId, editingSessionTitle.trim())
     }
     setEditingSessionId(null)
   }
 
-  const handleCancelRename = (e: React.MouseEvent) => {
+  // Обробка збереження назви групи
+  const handleSaveGroupRename = (groupId: string, e: React.FormEvent | React.MouseEvent) => {
+    e.preventDefault()
     e.stopPropagation()
-    setEditingSessionId(null)
+    if (editingGroupTitle.trim()) {
+      onRenameGroup(groupId, editingGroupTitle.trim())
+    }
+    setEditingGroupId(null)
   }
+
+  // 1. Кореневі чати: або явно без папки, або базової моделі (якщо немає іншої призначеної групи)
+  const rootSessions = sessions.filter((s) => {
+    if (s.groupId) return false
+    return true
+  })
+
+  // 2. Папки профілів (автопапки для кожного профілю крім базової моделі)
+  const nonGeneralProfiles = profiles.filter((p) => p.id !== 'general-profile')
 
   return (
     <>
-      {/* Mobile backdrop */}
+      {/* Mobile Backdrop */}
       {isOpen && (
         <div
           onClick={onToggleOpen}
-          className="fixed inset-0 z-40 bg-slate-900/50 backdrop-blur-xs md:hidden"
+          className="fixed inset-0 z-40 bg-slate-900/60 backdrop-blur-xs md:hidden"
         />
       )}
 
+      {/* Головний контейнер сайдбару */}
       <aside
-        className={`fixed md:static inset-y-0 left-0 z-40 flex flex-col bg-slate-100 dark:bg-slate-900/95 border-r border-slate-300 dark:border-slate-800 transition-all duration-300 ease-in-out select-none ${
-          isOpen ? 'w-72 sm:w-80 translate-x-0' : '-translate-x-full md:translate-x-0 md:w-18'
+        className={`fixed md:static inset-y-0 left-0 z-40 flex flex-col bg-slate-200 dark:bg-slate-950 border-r border-slate-300 dark:border-slate-800 transition-all duration-300 ease-in-out select-none ${
+          isOpen
+            ? 'w-72 sm:w-80 translate-x-0'
+            : '-translate-x-full md:translate-x-0 md:w-0 md:overflow-hidden md:border-r-0'
         }`}
       >
-        {/* Верхній рядок: Лого + Перемикач відкриття/згортання */}
-        <div className="flex items-center justify-between h-16 px-4 border-b border-slate-200 dark:border-slate-800">
-          <div className="flex items-center gap-2.5 min-w-0">
-            <div className="p-2 rounded-xl bg-gradient-to-tr from-sky-500 via-indigo-500 to-purple-600 text-white shadow-md shadow-sky-500/20 shrink-0">
-              <Sparkles className="w-5 h-5 animate-pulse" />
-            </div>
-            {isOpen && (
-              <div className="truncate">
-                <span className="font-bold text-base bg-gradient-to-r from-sky-600 via-indigo-600 to-purple-600 dark:from-sky-400 dark:via-indigo-400 dark:to-purple-400 bg-clip-text text-transparent">
-                  AI Studio
-                </span>
-                <span className="ml-1.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-sky-500/10 text-sky-600 dark:text-sky-400 border border-sky-500/20">
-                  GEMS
-                </span>
-              </div>
-            )}
+        {/* Верхня панель сайдбару: Заголовок + Згорнути */}
+        <div className="flex items-center justify-between h-16 px-4 border-b border-slate-300 dark:border-slate-800">
+          <div className="flex items-center gap-2">
+            <span className="font-bold text-sm text-slate-800 dark:text-slate-200">
+              Збережені чати
+            </span>
+            <span className="text-[11px] font-semibold px-1.5 py-0.5 rounded-full bg-slate-300 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+              {sessions.length}
+            </span>
           </div>
 
           <button
             type="button"
             onClick={onToggleOpen}
-            className="p-1.5 rounded-lg text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-100 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors"
-            title={isOpen ? 'Згорнути панель' : 'Розгорнути панель'}
+            className="p-1.5 rounded-lg text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100 hover:bg-slate-300 dark:hover:bg-slate-800 transition-colors"
+            title="Згорнути панель"
           >
-            {isOpen ? <ChevronLeft className="w-5 h-5" /> : <ChevronRight className="w-5 h-5" />}
+            <PanelLeftClose className="w-5 h-5" />
           </button>
         </div>
 
-        {/* Кнопка: Новий чат (Gemini Style Pill) */}
-        <div className="p-3">
+        {/* Кнопки дій: Новий чат + Нова папка */}
+        <div className="p-3 space-y-2 border-b border-slate-300/70 dark:border-slate-800/80">
           <button
             type="button"
             onClick={onNewSession}
-            className={`flex items-center justify-center gap-2.5 w-full py-2.5 rounded-full bg-white dark:bg-slate-800 hover:bg-slate-200/80 dark:hover:bg-slate-700/80 text-slate-800 dark:text-slate-100 border border-slate-300 dark:border-slate-700 shadow-sm hover:shadow transition-all group font-medium text-sm ${
-              !isOpen && 'md:p-2.5 md:rounded-xl'
-            }`}
-            title="Нова сесія"
+            className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-sm shadow-sm hover:shadow transition-all group"
+            title="Почати нову сесію"
           >
-            <Plus className="w-4 h-4 text-sky-500 group-hover:scale-110 transition-transform shrink-0" />
-            {isOpen && <span>Новий чат</span>}
+            <Plus className="w-4 h-4 group-hover:scale-110 transition-transform" />
+            <span>Новий чат</span>
           </button>
-        </div>
 
-        {/* Прокручуваний контент бічної панелі */}
-        <div className="flex-1 overflow-y-auto px-2 space-y-4">
-          {/* СЕКЦІЯ 1: ПРОФІЛЬНІ ФАХІВЦІ (GEMS) */}
-          <div className="space-y-1">
-            {isOpen ? (
-              <div className="flex items-center justify-between px-2 pt-2 pb-1 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                <span className="flex items-center gap-1.5">
-                  <Bot className="w-3.5 h-3.5 text-purple-500" />
-                  Фахівці (Gems)
-                </span>
+          <button
+            type="button"
+            onClick={() => setIsCreatingFolder(true)}
+            className="flex items-center justify-center gap-2 w-full py-1.5 rounded-xl bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-800 font-medium text-xs transition-colors"
+            title="Створити нову папку для сортування чатів"
+          >
+            <FolderPlus className="w-3.5 h-3.5 text-emerald-500" />
+            <span>+ Створити папку</span>
+          </button>
+
+          {/* Форма швидкого створення папки */}
+          {isCreatingFolder && (
+            <form
+              onSubmit={handleCreateGroupSubmit}
+              className="p-2 bg-white dark:bg-slate-900 rounded-xl border border-emerald-500 shadow-sm space-y-2 animate-in fade-in duration-150"
+            >
+              <input
+                type="text"
+                autoFocus
+                value={newFolderName}
+                onChange={(e) => setNewFolderName(e.target.value)}
+                placeholder="Назва нової папки..."
+                className="w-full px-2 py-1 text-xs rounded border border-slate-300 dark:border-slate-700 bg-transparent text-slate-800 dark:text-slate-100 focus:outline-none"
+              />
+              <div className="flex justify-end gap-1">
                 <button
                   type="button"
-                  onClick={() => onOpenGemManager()}
-                  className="p-1 rounded-md hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-500 hover:text-sky-600 dark:hover:text-sky-400 transition-colors"
-                  title="Додати власного фахівця"
+                  onClick={() => {
+                    setIsCreatingFolder(false)
+                    setNewFolderName('')
+                  }}
+                  className="px-2 py-0.5 text-xs text-slate-500 hover:text-slate-700"
                 >
-                  <Plus className="w-3.5 h-3.5" />
+                  Скасувати
+                </button>
+                <button
+                  type="submit"
+                  className="px-2.5 py-0.5 text-xs bg-emerald-600 text-white rounded font-medium hover:bg-emerald-700"
+                >
+                  Створити
                 </button>
               </div>
-            ) : (
-              <div className="h-2" />
-            )}
+            </form>
+          )}
+        </div>
 
-            <div className="space-y-0.5">
-              {gems.map((gem) => {
-                const isActive = gem.id === activeGemId
+        {/* Прокручуваний список чатів з папками */}
+        <div className="flex-1 overflow-y-auto px-2 py-3 space-y-4">
+          {/* СЕКЦІЯ 1: КАСТОМНІ ПАПКИ КОРИСТУВАЧА */}
+          {groups.length > 0 && (
+            <div className="space-y-1">
+              <div className="px-2 text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                Мої папки
+              </div>
+              {groups.map((group) => {
+                const groupSessions = sessions.filter((s) => s.groupId === group.id)
+                const isCollapsed = Boolean(collapsedGroups[group.id])
+                const isEditingThisGroup = editingGroupId === group.id
+
                 return (
-                  <div
-                    key={gem.id}
-                    onClick={() => onSelectGem(gem.id)}
-                    className={`group relative flex items-center gap-2.5 px-2.5 py-2 rounded-xl cursor-pointer transition-all ${
-                      isActive
-                        ? 'bg-sky-500/15 text-sky-700 dark:text-sky-300 font-semibold'
-                        : 'text-slate-700 dark:text-slate-300 hover:bg-slate-200/70 dark:hover:bg-slate-800/70'
-                    } ${!isOpen && 'justify-center px-1.5'}`}
-                    title={`${gem.name} — ${gem.role}`}
-                  >
-                    <div
-                      className={`p-1.5 rounded-lg shrink-0 transition-colors ${
-                        isActive
-                          ? 'bg-sky-500 text-white shadow-xs'
-                          : 'bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400 group-hover:bg-slate-300 dark:group-hover:bg-slate-700'
-                      }`}
-                    >
-                      <GemIcon iconName={gem.iconName} className="w-4 h-4" />
-                    </div>
-
-                    {isOpen && (
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between">
-                          <p className="text-xs truncate">{gem.name}</p>
-                          {!gem.isBuiltIn && (
-                            <span className="text-[9px] px-1 py-0.2 rounded bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20">
-                              Custom
-                            </span>
+                  <div key={group.id} className="rounded-xl overflow-hidden">
+                    {/* Заголовок папки */}
+                    {isEditingThisGroup ? (
+                      <form
+                        onSubmit={(e) => handleSaveGroupRename(group.id, e)}
+                        className="flex items-center gap-1 p-1 bg-white dark:bg-slate-900 rounded-lg border border-emerald-500"
+                      >
+                        <input
+                          type="text"
+                          autoFocus
+                          value={editingGroupTitle}
+                          onChange={(e) => setEditingGroupTitle(e.target.value)}
+                          className="flex-1 text-xs bg-transparent px-1 text-slate-800 dark:text-slate-100 outline-none"
+                        />
+                        <button
+                          type="submit"
+                          className="p-1 text-emerald-500 hover:text-emerald-600"
+                        >
+                          <Check className="w-3 h-3" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setEditingGroupId(null)}
+                          className="p-1 text-slate-400 hover:text-slate-600"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </form>
+                    ) : (
+                      <div
+                        onClick={() => toggleGroupCollapse(group.id)}
+                        className="group flex items-center justify-between px-2.5 py-1.5 rounded-lg hover:bg-slate-300/70 dark:hover:bg-slate-900 cursor-pointer text-xs font-semibold text-slate-700 dark:text-slate-300"
+                      >
+                        <div className="flex items-center gap-2 min-w-0">
+                          {isCollapsed ? (
+                            <ChevronRight className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                          ) : (
+                            <ChevronDown className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                           )}
+                          {isCollapsed ? (
+                            <Folder className="w-4 h-4 text-emerald-500 shrink-0" />
+                          ) : (
+                            <FolderOpen className="w-4 h-4 text-emerald-500 shrink-0" />
+                          )}
+                          <span className="truncate">{group.name}</span>
+                          <span className="text-[10px] font-normal text-slate-400">
+                            ({groupSessions.length})
+                          </span>
                         </div>
-                        <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate font-normal">
-                          {gem.role}
-                        </p>
+
+                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              setEditingGroupId(group.id)
+                              setEditingGroupTitle(group.name)
+                            }}
+                            className="p-1 hover:text-slate-900 dark:hover:text-slate-100"
+                            title="Перейменувати папку"
+                          >
+                            <Edit2 className="w-3 h-3" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              if (confirm(`Видалити папку "${group.name}"? Чати перейдуть у корінь.`)) {
+                                onDeleteGroup(group.id)
+                              }
+                            }}
+                            className="p-1 hover:text-rose-500"
+                            title="Видалити папку"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </button>
+                        </div>
                       </div>
                     )}
 
-                    {isOpen && (
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          onOpenGemManager(gem)
-                        }}
-                        className="opacity-0 group-hover:opacity-100 p-1 rounded-md text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-300/60 dark:hover:bg-slate-700 transition-opacity"
-                        title={gem.isBuiltIn ? 'Переглянути інструкції' : 'Редагувати'}
-                      >
-                        <Edit2 className="w-3 h-3" />
-                      </button>
+                    {/* Вміст папки */}
+                    {!isCollapsed && (
+                      <div className="pl-4 pr-1 py-0.5 space-y-0.5 border-l-2 border-emerald-500/20 ml-3.5 my-0.5">
+                        {groupSessions.length === 0 ? (
+                          <div className="px-2 py-1 text-[11px] text-slate-400 italic">
+                            Папка порожня
+                          </div>
+                        ) : (
+                          groupSessions.map((session) => renderSessionItem(session))
+                        )}
+                      </div>
                     )}
                   </div>
                 )
               })}
             </div>
-          </div>
+          )}
 
-          {/* Розділювач */}
-          <div className="h-px bg-slate-200 dark:bg-slate-800 my-2" />
+          {/* СЕКЦІЯ 2: АВТОМАТИЧНІ ПАПКИ ПРОФІЛІВ */}
+          <div className="space-y-1">
+            <div className="px-2 text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+              Папки профілів
+            </div>
 
-          {/* СЕКЦІЯ 2: ЗБЕРЕЖЕНІ СЕСІЇ (SAVED CHATS) */}
-          <div className="space-y-2">
-            {isOpen && (
-              <div className="px-2 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center justify-between">
-                <span className="flex items-center gap-1.5">
-                  <MessageSquare className="w-3.5 h-3.5 text-sky-500" />
-                  Сесії ({sessions.length})
-                </span>
-              </div>
-            )}
+            {nonGeneralProfiles.map((profile) => {
+              // Чати цього профілю, що зберігаються в його папці (або без кастомної групи)
+              const profileSessions = sessions.filter(
+                (s) => s.profileId === profile.id && (!s.groupId || s.groupId === `profile_${profile.id}`)
+              )
+              const folderId = `profile_folder_${profile.id}`
+              const isCollapsed = Boolean(collapsedGroups[folderId])
 
-            {sessions.length === 0 ? (
-              isOpen && (
-                <div className="px-3 py-4 text-center text-xs text-slate-400">
-                  Немає збережених чатів. Натисніть "+ Новий чат", щоб розпочати.
+              return (
+                <div key={profile.id} className="rounded-xl overflow-hidden">
+                  {/* Заголовок папки профілю */}
+                  <div
+                    onClick={() => toggleGroupCollapse(folderId)}
+                    className="group flex items-center justify-between px-2.5 py-1.5 rounded-lg hover:bg-slate-300/70 dark:hover:bg-slate-900 cursor-pointer text-xs font-semibold text-slate-700 dark:text-slate-300"
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      {isCollapsed ? (
+                        <ChevronRight className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                      ) : (
+                        <ChevronDown className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                      )}
+                      <div className="p-1 rounded-md bg-slate-300 dark:bg-slate-800 text-emerald-600 dark:text-emerald-400 shrink-0">
+                        <GemIcon iconName={profile.iconName} className="w-3 h-3" />
+                      </div>
+                      <span className="truncate">{profile.name}</span>
+                      <span className="text-[10px] font-normal text-slate-400">
+                        ({profileSessions.length})
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Список чатів усередині папки профілю */}
+                  {!isCollapsed && (
+                    <div className="pl-4 pr-1 py-0.5 space-y-0.5 border-l-2 border-slate-300 dark:border-slate-800 ml-3.5 my-0.5">
+                      {profileSessions.length === 0 ? (
+                        <div className="px-2 py-1 text-[11px] text-slate-400 italic">
+                          Немає чатів з цим профілем
+                        </div>
+                      ) : (
+                        profileSessions.map((session) => renderSessionItem(session))
+                      )}
+                    </div>
+                  )}
                 </div>
               )
+            })}
+          </div>
+
+          {/* СЕКЦІЯ 3: КОРЕНЕВІ ЧАТИ (БАЗОВА МОДЕЛЬ / БЕЗ ПАПКИ) */}
+          <div className="space-y-1">
+            <div className="px-2 text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center justify-between">
+              <span>Базові чати (Корінь)</span>
+              <span className="text-[10px] font-normal text-slate-400">
+                ({rootSessions.filter((s) => s.profileId === 'general-profile').length})
+              </span>
+            </div>
+
+            {rootSessions.filter((s) => s.profileId === 'general-profile').length === 0 ? (
+              <div className="px-3 py-2 text-center text-xs text-slate-400">
+                Немає базових чатів
+              </div>
             ) : (
-              <div className="space-y-3">
-                {/* Сьогодні */}
-                {todaySessions.length > 0 && (
-                  <div>
-                    {isOpen && (
-                      <div className="px-2 pb-1 text-[11px] font-medium text-slate-400">Сьогодні</div>
-                    )}
-                    <div className="space-y-0.5">
-                      {todaySessions.map((session) => renderSessionItem(session))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Вчора */}
-                {yesterdaySessions.length > 0 && (
-                  <div>
-                    {isOpen && (
-                      <div className="px-2 pb-1 text-[11px] font-medium text-slate-400">Вчора</div>
-                    )}
-                    <div className="space-y-0.5">
-                      {yesterdaySessions.map((session) => renderSessionItem(session))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Раніше */}
-                {olderSessions.length > 0 && (
-                  <div>
-                    {isOpen && (
-                      <div className="px-2 pb-1 text-[11px] font-medium text-slate-400">Раніше</div>
-                    )}
-                    <div className="space-y-0.5">
-                      {olderSessions.map((session) => renderSessionItem(session))}
-                    </div>
-                  </div>
-                )}
+              <div className="space-y-0.5">
+                {rootSessions
+                  .filter((s) => s.profileId === 'general-profile')
+                  .map((session) => renderSessionItem(session))}
               </div>
             )}
           </div>
         </div>
 
-        {/* НИЖНІЙ БЛОК: НАЛАШТУВАННЯ + ПОВЕРНЕННЯ + ПРОФІЛЬ */}
-        <div className="p-3 border-t border-slate-200 dark:border-slate-800 space-y-1.5">
-          {/* Кнопка налаштувань n8n / Моделі */}
-          <button
-            type="button"
-            onClick={onOpenSettings}
-            className={`flex items-center gap-2.5 w-full px-2.5 py-2 rounded-xl text-slate-700 dark:text-slate-300 hover:bg-slate-200/80 dark:hover:bg-slate-800 transition-colors text-xs font-medium ${
-              !isOpen && 'justify-center px-1'
-            }`}
-            title="Налаштування моделі та n8n Webhook"
-          >
-            <SettingsIcon className="w-4 h-4 text-sky-500 shrink-0" />
-            {isOpen && <span>Налаштування n8n & ШІ</span>}
-          </button>
-
-          {/* Повернутися на сайт MeteoUAV */}
+        {/* НИЖНЯ ПАНЕЛЬ: ПРОФІЛЬ + ПОВЕРНЕННЯ ДО METEOUAV */}
+        <div className="p-3 border-t border-slate-300 dark:border-slate-800 space-y-2 bg-slate-200/60 dark:bg-slate-950">
           <Link
             to="/app"
-            className={`flex items-center gap-2.5 w-full px-2.5 py-2 rounded-xl text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-200/80 dark:hover:bg-slate-800 transition-colors text-xs font-medium ${
-              !isOpen && 'justify-center px-1'
-            }`}
-            title="Повернутися до MeteoUAV"
+            className="flex items-center gap-2.5 w-full px-3 py-2 rounded-xl text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-300/80 dark:hover:bg-slate-900 transition-colors text-xs font-semibold"
+            title="Повернутися до застосунку MeteoUAV"
           >
-            <ArrowLeft className="w-4 h-4 shrink-0" />
-            {isOpen && <span>До застосунку MeteoUAV</span>}
+            <ArrowLeft className="w-4 h-4 text-emerald-500 shrink-0" />
+            <span>До MeteoUAV</span>
           </Link>
 
-          {/* Профіль користувача */}
           {userProfile && (
-            <div
-              className={`flex items-center gap-2.5 pt-2 border-t border-slate-200 dark:border-slate-800/80 ${
-                !isOpen && 'justify-center'
-              }`}
-            >
+            <div className="flex items-center gap-2.5 pt-2 border-t border-slate-300/70 dark:border-slate-800/80">
               {userProfile.avatar_url ? (
                 <img
                   src={userProfile.avatar_url}
                   alt={userProfile.nickname || 'Користувач'}
-                  className="w-7 h-7 rounded-full object-cover shrink-0 ring-1 ring-slate-300 dark:ring-slate-700"
+                  className="w-7 h-7 rounded-full object-cover shrink-0 ring-1 ring-slate-400 dark:ring-slate-700"
                 />
               ) : (
-                <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-sky-500 to-indigo-600 text-white font-bold text-xs flex items-center justify-center shrink-0">
+                <div className="w-7 h-7 rounded-full bg-emerald-600 text-white font-bold text-xs flex items-center justify-center shrink-0">
                   {getInitials(userProfile.nickname || 'К')}
                 </div>
               )}
-              {isOpen && (
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-1.5">
-                    <p className="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate">
-                      {userProfile.nickname || 'Користувач'}
-                    </p>
-                    {userProfile.is_pro && (
-                      <span className="text-[9px] font-bold px-1 rounded bg-amber-500/20 text-amber-500 border border-amber-500/30">
-                        PRO
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-[10px] text-slate-400 truncate">Авторизовано</p>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-1.5">
+                  <p className="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate">
+                    {userProfile.nickname || 'Користувач'}
+                  </p>
+                  {userProfile.is_pro && (
+                    <span className="text-[9px] font-bold px-1 rounded bg-amber-500/20 text-amber-500 border border-amber-500/30">
+                      PRO
+                    </span>
+                  )}
                 </div>
-              )}
+                <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
+                  Авторизований сеанс
+                </p>
+              </div>
             </div>
           )}
         </div>
@@ -358,34 +453,36 @@ export const AiStudioSidebar: React.FC<AiStudioSidebarProps> = ({
     </>
   )
 
+  // Функція рендерингу одного елемента чату
   function renderSessionItem(session: AiChatSession) {
     const isSelected = session.id === activeSessionId
     const isEditing = session.id === editingSessionId
+    const isMoving = session.id === movingSessionId
 
     if (isEditing) {
       return (
         <form
           key={session.id}
-          onSubmit={(e) => handleSaveRename(session.id, e)}
-          className="flex items-center gap-1 px-2 py-1 bg-white dark:bg-slate-800 rounded-lg border border-sky-500"
+          onSubmit={(e) => handleSaveSessionRename(session.id, e)}
+          className="flex items-center gap-1 px-2 py-1 bg-white dark:bg-slate-900 rounded-lg border border-emerald-500"
         >
           <input
             type="text"
             autoFocus
-            value={editingTitle}
-            onChange={(e) => setEditingTitle(e.target.value)}
+            value={editingSessionTitle}
+            onChange={(e) => setEditingSessionTitle(e.target.value)}
             className="flex-1 bg-transparent text-xs text-slate-800 dark:text-slate-100 focus:outline-none"
           />
           <button
             type="button"
-            onClick={(e) => handleSaveRename(session.id, e)}
+            onClick={(e) => handleSaveSessionRename(session.id, e)}
             className="p-1 text-emerald-500 hover:text-emerald-600"
           >
             <Check className="w-3 h-3" />
           </button>
           <button
             type="button"
-            onClick={handleCancelRename}
+            onClick={() => setEditingSessionId(null)}
             className="p-1 text-slate-400 hover:text-slate-600"
           >
             <X className="w-3 h-3" />
@@ -395,31 +492,50 @@ export const AiStudioSidebar: React.FC<AiStudioSidebarProps> = ({
     }
 
     return (
-      <div
-        key={session.id}
-        onClick={() => onSelectSession(session.id)}
-        className={`group relative flex items-center justify-between px-2.5 py-1.5 rounded-xl cursor-pointer transition-all ${
-          isSelected
-            ? 'bg-slate-200 dark:bg-slate-800 text-sky-600 dark:text-sky-400 font-medium'
-            : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200/60 dark:hover:bg-slate-800/60 hover:text-slate-900 dark:hover:text-slate-200'
-        } ${!isOpen && 'justify-center px-1'}`}
-        title={session.title}
-      >
-        <div className="flex items-center gap-2 min-w-0">
-          <MessageSquare className="w-3.5 h-3.5 shrink-0 opacity-70" />
-          {isOpen && <span className="text-xs truncate">{session.title}</span>}
-        </div>
+      <div key={session.id} className="relative group">
+        <div
+          onClick={() => onSelectSession(session.id)}
+          className={`flex items-center justify-between px-2.5 py-1.5 rounded-xl cursor-pointer transition-all ${
+            isSelected
+              ? 'bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 font-semibold'
+              : 'text-slate-700 dark:text-slate-300 hover:bg-slate-300/60 dark:hover:bg-slate-900/60'
+          }`}
+          title={session.title}
+        >
+          <div className="flex items-center gap-2 min-w-0">
+            <MessageSquare className="w-3.5 h-3.5 shrink-0 opacity-70" />
+            <span className="text-xs truncate">{session.title}</span>
+          </div>
 
-        {isOpen && (
           <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+            {/* Кнопка переміщення в іншу папку */}
             <button
               type="button"
-              onClick={(e) => handleStartRename(session, e)}
+              onClick={(e) => {
+                e.stopPropagation()
+                setMovingSessionId(isMoving ? null : session.id)
+              }}
+              className="p-1 rounded text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
+              title="Перемістити в іншу папку"
+            >
+              <CornerDownRight className="w-3 h-3" />
+            </button>
+
+            {/* Перейменувати */}
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation()
+                setEditingSessionId(session.id)
+                setEditingSessionTitle(session.title)
+              }}
               className="p-1 rounded text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
               title="Перейменувати"
             >
               <Edit2 className="w-3 h-3" />
             </button>
+
+            {/* Видалити */}
             <button
               type="button"
               onClick={(e) => {
@@ -429,10 +545,47 @@ export const AiStudioSidebar: React.FC<AiStudioSidebarProps> = ({
                 }
               }}
               className="p-1 rounded text-slate-400 hover:text-rose-500"
-              title="Видалити сесію"
+              title="Видалити"
             >
               <Trash2 className="w-3 h-3" />
             </button>
+          </div>
+        </div>
+
+        {/* Спливаюче меню вибору папки для переміщення */}
+        {isMoving && (
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="absolute left-4 right-4 top-full mt-1 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-800 rounded-xl shadow-xl p-2 z-30 space-y-1 text-xs animate-in fade-in duration-100"
+          >
+            <div className="px-1.5 py-0.5 text-[10px] font-semibold text-slate-400 uppercase">
+              Перемістити у:
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                onMoveSession(session.id, null)
+                setMovingSessionId(null)
+              }}
+              className="w-full text-left px-2 py-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-1.5"
+            >
+              <Folder className="w-3 h-3 text-slate-400" />
+              <span>Корінь (без папки)</span>
+            </button>
+            {groups.map((g) => (
+              <button
+                key={g.id}
+                type="button"
+                onClick={() => {
+                  onMoveSession(session.id, g.id)
+                  setMovingSessionId(null)
+                }}
+                className="w-full text-left px-2 py-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-1.5 truncate"
+              >
+                <Folder className="w-3 h-3 text-emerald-500" />
+                <span className="truncate">{g.name}</span>
+              </button>
+            ))}
           </div>
         )}
       </div>
