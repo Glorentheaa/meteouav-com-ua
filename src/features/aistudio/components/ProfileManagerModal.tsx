@@ -1,13 +1,11 @@
 import React, { useState } from 'react'
 import {
   X,
-  UserCheck,
   Trash2,
   Check,
-  Sliders,
 } from 'lucide-react'
 import { type AiProfile } from '../types'
-import { GemIcon } from './GemIcon'
+import { GemIcon, getProfileColorClasses } from './GemIcon'
 
 interface ProfileManagerModalProps {
   isOpen: boolean
@@ -18,24 +16,48 @@ interface ProfileManagerModalProps {
 }
 
 const AVAILABLE_ICONS = [
-  'cloud',
-  'plane',
-  'compass',
-  'cpu',
-  'shield',
-  'wind',
-  'zap',
   'bot',
   'sparkles',
+  'brain',
+  'cpu',
+  'zap',
+  'flame',
+  'shield',
+  'code',
+  'terminal',
+  'file-text',
+  'compass',
+  'plane',
+  'cloud',
+  'eye',
+  'layers',
+  'settings',
+  'radio',
+  'search',
+  'message-square',
+  'rocket',
+  'heart',
+  'bookmark',
+  'atom',
+  'coffee',
+  'wrench',
+  'lightbulb',
+  'globe',
 ]
 
 const AVAILABLE_COLORS = [
   { name: 'emerald', label: 'Смарагдовий', bg: 'bg-emerald-500' },
   { name: 'sky', label: 'Небесний', bg: 'bg-sky-500' },
+  { name: 'cyan', label: 'Ціан', bg: 'bg-cyan-500' },
+  { name: 'teal', label: 'Тіл', bg: 'bg-teal-500' },
   { name: 'indigo', label: 'Індиго', bg: 'bg-indigo-500' },
-  { name: 'amber', label: 'Бурштиновий', bg: 'bg-amber-500' },
-  { name: 'rose', label: 'Трояндовий', bg: 'bg-rose-500' },
   { name: 'purple', label: 'Фіолетовий', bg: 'bg-purple-500' },
+  { name: 'violet', label: 'Віолетовий', bg: 'bg-violet-500' },
+  { name: 'pink', label: 'Рожевий', bg: 'bg-pink-500' },
+  { name: 'rose', label: 'Трояндовий', bg: 'bg-rose-500' },
+  { name: 'amber', label: 'Бурштиновий', bg: 'bg-amber-500' },
+  { name: 'orange', label: 'Помаранчевий', bg: 'bg-orange-500' },
+  { name: 'slate', label: 'Графітовий', bg: 'bg-slate-600' },
 ]
 
 export const ProfileManagerModal: React.FC<ProfileManagerModalProps> = ({
@@ -46,17 +68,14 @@ export const ProfileManagerModal: React.FC<ProfileManagerModalProps> = ({
   onDeleteProfile,
 }) => {
   const isEditing = Boolean(initialProfile)
-  const isBuiltIn = Boolean(initialProfile?.isBuiltIn)
 
   const [name, setName] = useState(initialProfile?.name || '')
-  const [role, setRole] = useState(initialProfile?.role || '')
   const [iconName, setIconName] = useState(initialProfile?.iconName || 'bot')
   const [color, setColor] = useState(initialProfile?.color || 'emerald')
   const [description, setDescription] = useState(initialProfile?.description || '')
   const [systemInstructions, setSystemInstructions] = useState(
     initialProfile?.systemInstructions || ''
   )
-  const [temperature, setTemperature] = useState(initialProfile?.temperature ?? 0.7)
   const [error, setError] = useState<string | null>(null)
 
   if (!isOpen) return null
@@ -67,25 +86,14 @@ export const ProfileManagerModal: React.FC<ProfileManagerModalProps> = ({
       setError('Вкажіть назву профілю.')
       return
     }
-    if (!role.trim()) {
-      setError('Вкажіть спеціалізацію чи коротку роль.')
-      return
-    }
-    if (!systemInstructions.trim()) {
-      setError('Вкажіть системні інструкції для цього профілю.')
-      return
-    }
 
     const profileToSave: AiProfile = {
       id: initialProfile ? initialProfile.id : `profile_${Date.now()}`,
       name: name.trim(),
-      role: role.trim(),
       iconName,
       color,
       description: description.trim(),
       systemInstructions: systemInstructions.trim(),
-      temperature,
-      isBuiltIn: isBuiltIn,
       createdAt: initialProfile?.createdAt || Date.now(),
     }
 
@@ -94,20 +102,20 @@ export const ProfileManagerModal: React.FC<ProfileManagerModalProps> = ({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-xs">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-xs select-none">
       <div className="bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-800 rounded-2xl w-full max-w-xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-        {/* Шапка */}
+        {/* Шапка модалки */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200 dark:border-slate-800 bg-slate-100/70 dark:bg-slate-900/80">
           <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
-              <UserCheck className="w-5 h-5" />
+            <div className={`p-2 rounded-xl ${getProfileColorClasses(color)}`}>
+              <GemIcon iconName={iconName} className="w-5 h-5" />
             </div>
             <div>
               <h3 className="font-bold text-slate-900 dark:text-slate-100 text-lg">
-                {isEditing ? (isBuiltIn ? 'Налаштування профілю' : 'Редагувати профіль') : 'Створити новий профіль'}
+                {isEditing ? 'Редагувати профіль' : 'Створити новий профіль'}
               </h3>
               <p className="text-xs text-slate-500 dark:text-slate-400">
-                Персоналізовані системні інструкції та параметри для n8n
+                Персональні інструкції для ШІ агента
               </p>
             </div>
           </div>
@@ -128,130 +136,99 @@ export const ProfileManagerModal: React.FC<ProfileManagerModalProps> = ({
             </div>
           )}
 
-          {/* Назва та Спеціалізація */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-            <div className="space-y-1">
-              <label className="font-semibold text-slate-800 dark:text-slate-200 text-xs">
-                Назва профілю *
-              </label>
-              <input
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="напр. Метеоролог БПЛА"
-                className="w-full px-3.5 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-emerald-500 focus:outline-none text-sm"
-              />
-            </div>
-            <div className="space-y-1">
-              <label className="font-semibold text-slate-800 dark:text-slate-200 text-xs">
-                Спеціалізація / Підзаголовок *
-              </label>
-              <input
-                type="text"
-                value={role}
-                onChange={(e) => setRole(e.target.value)}
-                placeholder="напр. Профільний авіаметеоролог"
-                className="w-full px-3.5 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-emerald-500 focus:outline-none text-sm"
-              />
+          {/* Назва профілю (підзаголовок прибрано) */}
+          <div className="space-y-1">
+            <label className="font-semibold text-slate-800 dark:text-slate-200 text-xs">
+              Назва профілю *
+            </label>
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="напр. Розробник, Аналітик, Асистент"
+              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-emerald-500 focus:outline-none text-sm"
+            />
+          </div>
+
+          {/* Вибір кольору акценту іконки */}
+          <div className="space-y-1.5 pt-1">
+            <label className="font-semibold text-slate-800 dark:text-slate-200 text-xs">
+              Колір іконки профілю
+            </label>
+            <div className="flex flex-wrap gap-2.5 pt-1">
+              {AVAILABLE_COLORS.map((c) => (
+                <button
+                  key={c.name}
+                  type="button"
+                  onClick={() => setColor(c.name)}
+                  className={`w-7 h-7 rounded-full ${c.bg} transition-all ${
+                    color === c.name
+                      ? 'ring-4 ring-slate-400 dark:ring-slate-500 scale-110 shadow-md'
+                      : 'opacity-70 hover:opacity-100'
+                  }`}
+                  title={c.label}
+                />
+              ))}
             </div>
           </div>
 
-          {/* Іконка та Колір */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-1">
-            <div className="space-y-1.5">
+          {/* Вибір іконки */}
+          <div className="space-y-1.5 pt-1">
+            <div className="flex items-center justify-between">
               <label className="font-semibold text-slate-800 dark:text-slate-200 text-xs">
-                Іконка
+                Іконка профілю
               </label>
-              <div className="flex flex-wrap gap-1.5">
-                {AVAILABLE_ICONS.map((icon) => (
-                  <button
-                    key={icon}
-                    type="button"
-                    onClick={() => setIconName(icon)}
-                    className={`p-2 rounded-lg border transition-all ${
-                      iconName === icon
-                        ? 'border-emerald-500 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 ring-2 ring-emerald-500/30'
-                        : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
-                    }`}
-                  >
-                    <GemIcon iconName={icon} className="w-4 h-4" />
-                  </button>
-                ))}
-              </div>
+              <span className="text-[11px] text-slate-400">
+                Обрано: {iconName}
+              </span>
             </div>
-
-            <div className="space-y-1.5">
-              <label className="font-semibold text-slate-800 dark:text-slate-200 text-xs">
-                Колір акценту
-              </label>
-              <div className="flex flex-wrap gap-2 pt-1">
-                {AVAILABLE_COLORS.map((c) => (
-                  <button
-                    key={c.name}
-                    type="button"
-                    onClick={() => setColor(c.name)}
-                    className={`w-6 h-6 rounded-full ${c.bg} transition-transform ${
-                      color === c.name
-                        ? 'ring-3 ring-emerald-400 ring-offset-2 scale-110'
-                        : 'opacity-80 hover:opacity-100'
-                    }`}
-                    title={c.label}
-                  />
-                ))}
-              </div>
+            <div className="flex flex-wrap gap-1.5 max-h-36 overflow-y-auto p-1.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40">
+              {AVAILABLE_ICONS.map((icon) => (
+                <button
+                  key={icon}
+                  type="button"
+                  onClick={() => setIconName(icon)}
+                  className={`p-2 rounded-lg border transition-all ${
+                    iconName === icon
+                      ? `${getProfileColorClasses(color)} border-transparent ring-2 ring-offset-1`
+                      : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
+                  }`}
+                  title={icon}
+                >
+                  <GemIcon iconName={icon} className="w-4 h-4" />
+                </button>
+              ))}
             </div>
           </div>
 
           {/* Короткий опис */}
           <div className="space-y-1">
             <label className="font-semibold text-slate-800 dark:text-slate-200 text-xs">
-              Короткий опис (відображається в списку)
+              Короткий опис (опціонально)
             </label>
             <input
               type="text"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Коротко про завдання цього профілю..."
-              className="w-full px-3.5 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-emerald-500 focus:outline-none text-sm"
+              placeholder="Коротке призначення або сфера знань..."
+              className="w-full px-3.5 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-emerald-500 focus:outline-none text-xs"
             />
           </div>
 
-          {/* Системні інструкції */}
+          {/* Системна інструкція */}
           <div className="space-y-1">
             <label className="flex items-center justify-between font-semibold text-slate-800 dark:text-slate-200 text-xs">
-              <span>Системні інструкції профілю (System Instructions) *</span>
+              <span>Системна інструкція</span>
               <span className="text-[11px] font-normal text-slate-500">
-                Передаються в n8n з кожним повідомленням
+                Передається в n8n для цього профілю
               </span>
             </label>
             <textarea
               rows={6}
               value={systemInstructions}
               onChange={(e) => setSystemInstructions(e.target.value)}
-              placeholder="Опишіть спеціальні знання, алгоритм розрахунків, тон відповіді та специфічні правила для цього профілю..."
+              placeholder="Опишіть спеціалізацію, тон спілкування, правила відповідей та обов'язки цього профілю..."
               className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-emerald-500 focus:outline-none font-mono text-xs leading-relaxed"
-            />
-          </div>
-
-          {/* Температура / Параметри генерації */}
-          <div className="space-y-1.5 p-3 rounded-xl bg-slate-100 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700">
-            <div className="flex justify-between items-center">
-              <span className="flex items-center gap-1.5 font-semibold text-slate-800 dark:text-slate-200 text-xs">
-                <Sliders className="w-3.5 h-3.5 text-emerald-500" />
-                Температура (Temperature): {temperature}
-              </span>
-              <span className="text-xs text-slate-500">
-                {temperature < 0.4 ? 'Сувора/Точна' : temperature > 0.8 ? 'Креативна' : 'Збалансована'}
-              </span>
-            </div>
-            <input
-              type="range"
-              min="0"
-              max="1"
-              step="0.05"
-              value={temperature}
-              onChange={(e) => setTemperature(parseFloat(e.target.value))}
-              className="w-full accent-emerald-500 mt-1"
             />
           </div>
         </form>
@@ -259,7 +236,7 @@ export const ProfileManagerModal: React.FC<ProfileManagerModalProps> = ({
         {/* Дії */}
         <div className="flex items-center justify-between px-5 py-3.5 border-t border-slate-200 dark:border-slate-800 bg-slate-100/70 dark:bg-slate-900/80">
           <div>
-            {isEditing && !isBuiltIn && onDeleteProfile && (
+            {isEditing && onDeleteProfile && (
               <button
                 type="button"
                 onClick={() => {
@@ -268,9 +245,10 @@ export const ProfileManagerModal: React.FC<ProfileManagerModalProps> = ({
                     onClose()
                   }
                 }}
-                className="flex items-center gap-1.5 text-rose-600 hover:text-rose-700 text-xs font-medium px-2 py-1.5 rounded-lg hover:bg-rose-500/10 transition-colors"
+                className="flex items-center gap-1.5 text-rose-600 hover:text-rose-700 text-xs font-semibold px-2.5 py-2 rounded-xl hover:bg-rose-500/10 transition-colors"
+                title="Видалити цей профіль"
               >
-                <Trash2 className="w-3.5 h-3.5" />
+                <Trash2 className="w-4 h-4" />
                 <span>Видалити профіль</span>
               </button>
             )}

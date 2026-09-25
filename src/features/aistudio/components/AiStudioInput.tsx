@@ -8,13 +8,13 @@ import {
   Image as ImageIcon,
 } from 'lucide-react'
 import { type AiProfile, type AiMessageAttachment } from '../types'
-import { GemIcon } from './GemIcon'
+import { GemIcon, getProfileColorClasses } from './GemIcon'
 
 interface AiStudioInputProps {
   onSendMessage: (text: string, attachments: AiMessageAttachment[]) => void
   onStopGeneration?: () => void
   isGenerating: boolean
-  activeProfile: AiProfile
+  activeProfile: AiProfile | null
   disabled?: boolean
   inputRef?: React.RefObject<HTMLTextAreaElement | null>
 }
@@ -126,7 +126,11 @@ export const AiStudioInput: React.FC<AiStudioInputProps> = ({
             value={text}
             onChange={(e) => setText(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder={`Запитайте ${activeProfile.name}...`}
+            placeholder={
+              activeProfile
+                ? `Запитайте ${activeProfile.name}...`
+                : 'Запитайте що завгодно...'
+            }
             className="w-full bg-transparent resize-none border-none outline-none text-slate-900 dark:text-slate-100 placeholder-slate-400 text-sm sm:text-base leading-relaxed max-h-44"
           />
         </div>
@@ -146,16 +150,24 @@ export const AiStudioInput: React.FC<AiStudioInputProps> = ({
               type="button"
               onClick={() => fileInputRef.current?.click()}
               className="p-2 rounded-xl text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-              title="Прикріпити файл або лог"
+              title="Прикріпити файл або документ"
             >
               <Paperclip className="w-4 h-4" />
             </button>
 
-            {/* Бейдж обраного профілю */}
-            <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 text-xs font-semibold border border-emerald-500/20">
-              <GemIcon iconName={activeProfile.iconName} className="w-3 h-3" />
-              <span>{activeProfile.name}</span>
-            </div>
+            {/* Бейдж обраного профілю з його кольором */}
+            {activeProfile && (
+              <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-semibold border border-slate-200 dark:border-slate-700">
+                <div
+                  className={`p-0.5 rounded-full ${getProfileColorClasses(
+                    activeProfile.color
+                  )} shrink-0`}
+                >
+                  <GemIcon iconName={activeProfile.iconName} className="w-2.5 h-2.5" />
+                </div>
+                <span>{activeProfile.name}</span>
+              </div>
+            )}
           </div>
 
           {/* Права частина: Кнопка відправки */}
@@ -190,7 +202,7 @@ export const AiStudioInput: React.FC<AiStudioInputProps> = ({
 
       {/* Дисклеймер у стилі сайту */}
       <p className="text-[11px] text-center text-slate-500 dark:text-slate-400 mt-2 px-2">
-        AI Studio може припускатися неточностей. Обов'язково перевіряйте критичні метеодані перед польотом.
+        AI Studio може припускатися неточностей. Перевіряйте важливу інформацію.
       </p>
     </div>
   )

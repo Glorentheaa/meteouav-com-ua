@@ -51,13 +51,15 @@ export const AiStudio: React.FC = () => {
     return true
   })
 
-  // Стан даних
+  // Стан профілів
   const [profiles, setProfiles] = useState<AiProfile[]>(() =>
     AiStudioStorage.getProfiles()
   )
-  const [activeProfileId, setActiveProfileId] = useState<string>(() =>
+  const [activeProfileId, setActiveProfileId] = useState<string | null>(() =>
     AiStudioStorage.getActiveProfileId()
   )
+
+  // Стан груп та сесій
   const [groups, setGroups] = useState<AiChatGroup[]>(() =>
     AiStudioStorage.getGroups()
   )
@@ -76,9 +78,9 @@ export const AiStudio: React.FC = () => {
   const [isGenerating, setIsGenerating] = useState(false)
   const inputRef = useRef<HTMLTextAreaElement>(null)
 
-  // Активний профіль
+  // Активний профіль (може бути null, якщо не обрано)
   const activeProfile =
-    profiles.find((p) => p.id === activeProfileId) || profiles[0]
+    profiles.find((p) => p.id === activeProfileId) || null
 
   // Активна сесія
   const activeSession =
@@ -86,7 +88,7 @@ export const AiStudio: React.FC = () => {
   const currentMessages = activeSession?.messages || []
 
   // Зміна активного профілю
-  const handleSelectProfile = (profileId: string) => {
+  const handleSelectProfile = (profileId: string | null) => {
     setActiveProfileId(profileId)
     AiStudioStorage.setActiveProfileId(profileId)
   }
@@ -105,9 +107,14 @@ export const AiStudio: React.FC = () => {
     setActiveSessionId(sessionId)
     AiStudioStorage.setActiveSessionId(sessionId)
     const session = sessions.find((s) => s.id === sessionId)
-    if (session && session.profileId) {
-      setActiveProfileId(session.profileId)
-      AiStudioStorage.setActiveProfileId(session.profileId)
+    if (session) {
+      if (session.profileId) {
+        setActiveProfileId(session.profileId)
+        AiStudioStorage.setActiveProfileId(session.profileId)
+      } else {
+        setActiveProfileId(null)
+        AiStudioStorage.setActiveProfileId(null)
+      }
     }
   }
 
@@ -186,8 +193,8 @@ export const AiStudio: React.FC = () => {
     const updated = AiStudioStorage.deleteProfile(profileId)
     setProfiles(updated)
     if (activeProfileId === profileId) {
-      setActiveProfileId(updated[0].id)
-      AiStudioStorage.setActiveProfileId(updated[0].id)
+      setActiveProfileId(null)
+      AiStudioStorage.setActiveProfileId(null)
     }
   }
 
@@ -204,19 +211,13 @@ export const AiStudio: React.FC = () => {
     // Якщо сесії ще немає — створюємо нову
     if (!currentSession) {
       const title = text.trim().slice(0, 45) || 'Новий діалог'
-      // Логіка: базова модель лишається в корені (null), інші профілі — у своїй автопапці
-      const defaultGroupId =
-        activeProfile.id === 'general-profile'
-          ? null
-          : `profile_${activeProfile.id}`
-
       const newSession: AiChatSession = {
         id: `session_${Date.now()}`,
         title,
         createdAt: Date.now(),
         updatedAt: Date.now(),
-        profileId: activeProfile.id,
-        groupId: defaultGroupId,
+        profileId: activeProfile?.id || null,
+        groupId: null, // Усі нові чати спочатку йдуть у "Збережені чати", користувач сам переміщує
         messages: [],
       }
       currentSession = newSession
@@ -270,8 +271,8 @@ export const AiStudio: React.FC = () => {
         role: 'assistant',
         content: response.text,
         timestamp: Date.now(),
-        profileId: activeProfile.id,
-        profileName: activeProfile.name,
+        profileId: activeProfile?.id || null,
+        profileName: activeProfile?.name || null,
       }
 
       const finalSession: AiChatSession = {
@@ -287,10 +288,10 @@ export const AiStudio: React.FC = () => {
       const errorMessage: AiMessage = {
         id: `msg_err_${Date.now()}`,
         role: 'assistant',
-        content: `⚠️ **Помилка з'єднання з n8n**:\n\n${errorMsg}`,
+        content: `⚠️ **Помилка зв'язку з n8n**:\n\n${errorMsg}`,
         timestamp: Date.now(),
-        profileId: activeProfile.id,
-        profileName: activeProfile.name,
+        profileId: activeProfile?.id || null,
+        profileName: activeProfile?.name || null,
         isError: true,
       }
 
@@ -326,11 +327,10 @@ export const AiStudio: React.FC = () => {
 
   return (
     <div className="h-screen w-screen flex overflow-hidden bg-slate-200 dark:bg-slate-950 text-slate-900 dark:text-slate-100 antialiased font-sans">
-      {/* Ліва бічна панель (Сортування чатів, папки, групи) */}
+      {/* Ліва бічна панель (Історія чатів, папки, без профілів) */}
       <AiStudioSidebar
         isOpen={isSidebarOpen}
         onToggleOpen={() => setIsSidebarOpen(!isSidebarOpen)}
-        profiles={profiles}
         sessions={sessions}
         groups={groups}
         activeSessionId={activeSessionId}
@@ -347,7 +347,7 @@ export const AiStudio: React.FC = () => {
 
       {/* Головна робоча область */}
       <div className="flex-1 flex flex-col min-w-0 h-full relative">
-        {/* Верхній заголовок */}
+        {/* Верхній заголовок: кнопка панелі, логотип, спадне меню профілів */}
         <AiStudioHeader
           isSidebarOpen={isSidebarOpen}
           onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
@@ -368,7 +368,7 @@ export const AiStudio: React.FC = () => {
         <AiStudioChatArea
           messages={currentMessages}
           activeProfile={activeProfile}
-          userName={profile?.nickname || user.email?.split('@')[0] || 'Пілоте'}
+          userName={profile?.nickname || user.email?.split('@')[0] || 'Користувачу'}
           userAvatar={profile?.avatar_url}
           isGenerating={isGenerating}
           onCopyMessage={(_text) => {}}

@@ -1,24 +1,19 @@
 export interface AiProfile {
   id: string
   name: string
-  role: string
-  iconName: string // 'cloud' | 'plane' | 'compass' | 'cpu' | 'shield' | 'bot' | 'wind' | 'zap' | 'sparkles'
-  color: string // 'emerald' | 'sky' | 'indigo' | 'amber' | 'rose' | 'purple'
-  description: string
-  systemInstructions: string // Системні інструкції профілю
-  temperature?: number
-  isBuiltIn?: boolean
+  iconName: string
+  color: string // 'emerald' | 'sky' | 'indigo' | 'purple' | 'pink' | 'rose' | 'amber' | 'orange' | 'teal' | 'cyan' | 'violet' | 'slate'
+  description?: string
+  systemInstructions: string
   createdAt?: number
 }
 
-// Псевдонім для зворотної сумісності за потреби
+// Псевдонім для зворотної сумісності
 export type AiGem = AiProfile
 
 export interface AiChatGroup {
   id: string
   name: string
-  profileId?: string // Прив'язка до профілю (для автопапок)
-  isCustom?: boolean // Користувацька папка
   createdAt: number
 }
 
@@ -35,8 +30,8 @@ export interface AiMessage {
   role: 'user' | 'assistant' | 'system'
   content: string
   timestamp: number
-  profileId?: string
-  profileName?: string
+  profileId?: string | null
+  profileName?: string | null
   attachments?: AiMessageAttachment[]
   isError?: boolean
 }
@@ -46,8 +41,8 @@ export interface AiChatSession {
   title: string
   createdAt: number
   updatedAt: number
-  profileId: string // Профіль, з яким ведеться діалог
-  groupId?: string | null // null / 'root' — у корені чатів; інакше ID папки/групи
+  profileId?: string | null // Може бути null, якщо профіль не обрано
+  groupId?: string | null // null — у списку збережених чатів; інакше ID папки
   messages: AiMessage[]
 }
 
@@ -60,14 +55,12 @@ export interface N8nChatPayload {
     role: 'user' | 'assistant'
     content: string
   }>
-  profile: {
+  profile?: {
     id: string
     name: string
-    role: string
     systemInstructions: string
-  }
-  systemInstructions: string
-  temperature: number
+  } | null
+  systemInstructions?: string
   attachments?: Array<{
     name: string
     type: string

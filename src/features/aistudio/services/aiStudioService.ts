@@ -7,9 +7,9 @@ import {
 import { BUILT_IN_PROFILES, N8N_CHAT_WEBHOOK_URL } from '../defaultProfiles'
 
 const STORAGE_KEYS = {
-  PROFILES: 'meteo_aistudio_profiles_v2',
-  GROUPS: 'meteo_aistudio_groups_v2',
-  SESSIONS: 'meteo_aistudio_sessions_v2',
+  PROFILES: 'meteo_aistudio_profiles_v3',
+  GROUPS: 'meteo_aistudio_groups_v3',
+  SESSIONS: 'meteo_aistudio_sessions_v3',
   ACTIVE_SESSION_ID: 'meteo_aistudio_active_session_id',
   ACTIVE_PROFILE_ID: 'meteo_aistudio_active_profile_id',
 }
@@ -20,10 +20,8 @@ export class AiStudioStorage {
     try {
       const raw = localStorage.getItem(STORAGE_KEYS.PROFILES)
       if (raw) {
-        const custom: AiProfile[] = JSON.parse(raw)
-        const builtInIds = new Set(BUILT_IN_PROFILES.map((p) => p.id))
-        const filteredCustom = custom.filter((p) => !builtInIds.has(p.id))
-        return [...BUILT_IN_PROFILES, ...filteredCustom]
+        const parsed: AiProfile[] = JSON.parse(raw)
+        if (Array.isArray(parsed)) return parsed
       }
     } catch (e) {
       console.error('Помилка читання профілів:', e)
@@ -40,12 +38,11 @@ export class AiStudioStorage {
       updated = [...all]
       updated[index] = { ...profile }
     } else {
-      updated = [...all, { ...profile, isBuiltIn: false, createdAt: Date.now() }]
+      updated = [...all, { ...profile, createdAt: Date.now() }]
     }
 
     try {
-      const customOnly = updated.filter((p) => !p.isBuiltIn)
-      localStorage.setItem(STORAGE_KEYS.PROFILES, JSON.stringify(customOnly))
+      localStorage.setItem(STORAGE_KEYS.PROFILES, JSON.stringify(updated))
     } catch (e) {
       console.error('Помилка збереження профілю:', e)
     }
@@ -54,10 +51,9 @@ export class AiStudioStorage {
 
   static deleteProfile(profileId: string): AiProfile[] {
     const all = this.getProfiles()
-    const updated = all.filter((p) => p.id !== profileId || p.isBuiltIn)
+    const updated = all.filter((p) => p.id !== profileId)
     try {
-      const customOnly = updated.filter((p) => !p.isBuiltIn)
-      localStorage.setItem(STORAGE_KEYS.PROFILES, JSON.stringify(customOnly))
+      localStorage.setItem(STORAGE_KEYS.PROFILES, JSON.stringify(updated))
     } catch (e) {
       console.error('Помилка видалення профілю:', e)
     }
@@ -91,7 +87,6 @@ export class AiStudioStorage {
     const newGroup: AiChatGroup = {
       id: `group_${Date.now()}`,
       name: name.trim(),
-      isCustom: true,
       createdAt: Date.now(),
     }
     const updated = [...groups, newGroup]
@@ -111,7 +106,7 @@ export class AiStudioStorage {
     const groups = this.getGroups().filter((g) => g.id !== groupId)
     this.saveGroups(groups)
 
-    // При видаленні групи переносимо чати в корінь
+    // При видаленні групи переносимо чати в збережені (без папки)
     const sessions = this.getSessions().map((s) =>
       s.groupId === groupId ? { ...s, groupId: null } : s
     )
@@ -188,19 +183,23 @@ export class AiStudioStorage {
     }
   }
 
-  static getActiveProfileId(): string {
-    return localStorage.getItem(STORAGE_KEYS.ACTIVE_PROFILE_ID) || BUILT_IN_PROFILES[0].id
+  static getActiveProfileId(): string | null {
+    return localStorage.getItem(STORAGE_KEYS.ACTIVE_PROFILE_ID)
   }
 
-  static setActiveProfileId(id: string): void {
-    localStorage.setItem(STORAGE_KEYS.ACTIVE_PROFILE_ID, id)
+  static setActiveProfileId(id: string | null): void {
+    if (id) {
+      localStorage.setItem(STORAGE_KEYS.ACTIVE_PROFILE_ID, id)
+    } else {
+      localStorage.removeItem(STORAGE_KEYS.ACTIVE_PROFILE_ID)
+    }
   }
 }
 
 // Головна функція відправки повідомлення на n8n webhook
 export async function sendAiStudioMessage(params: {
   session: AiChatSession
-  profile: AiProfile
+  profile: AiProfile | null
   userMessage: string
   attachments?: Array<{ name: string; type: string; size: number }>
   userProfile?: {
@@ -221,14 +220,14 @@ export async function sendAiStudioMessage(params: {
       role: m.role === 'assistant' ? 'assistant' : 'user',
       content: m.content,
     })),
-    profile: {
-      id: profile.id,
-      name: profile.name,
-      role: profile.role,
-      systemInstructions: profile.systemInstructions,
-    },
-    systemInstructions: profile.systemInstructions,
-    temperature: profile.temperature ?? 0.7,
+    profile: profile
+      ? {
+          id: profile.id,
+          name: profile.name,
+          systemInstructions: profile.systemInstructions,
+        }
+      : null,
+    systemInstructions: profile ? profile.systemInstructions : '',
     attachments,
     user: userProfile,
     timestamp: new Date().toISOString(),
