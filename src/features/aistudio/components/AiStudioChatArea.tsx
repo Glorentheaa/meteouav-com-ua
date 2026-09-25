@@ -5,8 +5,9 @@ import {
   FileText,
   Bot,
   Sparkles,
+  Zap,
 } from 'lucide-react'
-import { type AiProfile, type AiMessage } from '../types'
+import { type AiProfile, type AiMessage, type TokenUsage } from '../types'
 import { GemIcon, getProfileColorClasses } from './GemIcon'
 import { GeminiMarkdown } from './GeminiMarkdown'
 import { getInitials } from '../../../utils/gravatar'
@@ -17,7 +18,15 @@ interface AiStudioChatAreaProps {
   userName?: string
   userAvatar?: string | null
   isGenerating: boolean
+  sessionTokenUsage: { inputTokens: number; outputTokens: number; totalTokens: number }
   onCopyMessage: (text: string) => void
+}
+
+// Ліміт контекстного вікна: Gemini 3.8 Flash (API)
+const CONTEXT_WINDOW_LIMIT: TokenUsage = {
+  inputTokens: 1_048_576,
+  outputTokens: 65_536,
+  totalTokens: 1_048_576,
 }
 
 export const AiStudioChatArea: React.FC<AiStudioChatAreaProps> = ({
@@ -26,6 +35,7 @@ export const AiStudioChatArea: React.FC<AiStudioChatAreaProps> = ({
   userName = 'Користувачу',
   userAvatar,
   isGenerating,
+  sessionTokenUsage,
   onCopyMessage,
 }) => {
   const bottomRef = useRef<HTMLDivElement>(null)
@@ -92,7 +102,8 @@ export const AiStudioChatArea: React.FC<AiStudioChatAreaProps> = ({
 
   // --- СТАН 2: АКТИВНИЙ ДІАЛОГ ---
   return (
-    <div className="flex-1 overflow-y-auto px-3 sm:px-6 py-6 space-y-6 max-w-4xl mx-auto w-full">
+    <>
+      <div className="flex-1 overflow-y-auto px-3 sm:px-6 py-6 space-y-6 max-w-4xl mx-auto w-full">
       {messages.map((message) => {
         const isUser = message.role === 'user'
 
@@ -239,6 +250,57 @@ export const AiStudioChatArea: React.FC<AiStudioChatAreaProps> = ({
       )}
 
       <div ref={bottomRef} />
+      </div>
+      <TokenStatusBar usage={sessionTokenUsage} />
+    </>
+  )
+}
+
+// ---------- Компонент лічильника токенів ----------
+const TokenStatusBar: React.FC<{
+  usage: { inputTokens: number; outputTokens: number; totalTokens: number }
+}> = ({ usage }) => {
+  const { inputTokens, outputTokens, totalTokens } = usage
+  if (totalTokens === 0) return null
+
+  const pct = Math.min((totalTokens / CONTEXT_WINDOW_LIMIT.totalTokens) * 100, 100)
+  const fmtNum = (n: number) => n.toLocaleString('uk-UA')
+  const limitFmt = fmtNum(CONTEXT_WINDOW_LIMIT.totalTokens)
+
+  // Колір прогрес-бара залежно від засповненості
+  const barColor =
+    pct >= 85
+      ? 'bg-rose-500'
+      : pct >= 60
+      ? 'bg-amber-400'
+      : 'bg-emerald-500'
+
+  return (
+    <div className="px-4 py-1.5 border-t border-slate-300 dark:border-slate-800 bg-slate-200 dark:bg-slate-950 flex items-center gap-3 text-[11px] text-slate-500 dark:text-slate-400 select-none">
+      <Zap className="w-3 h-3 text-emerald-500 shrink-0" />
+      <span className="whitespace-nowrap">
+        <span className="text-slate-700 dark:text-slate-300 font-medium">Вхід:</span>{' '}
+        {fmtNum(inputTokens)}
+      </span>
+      <span className="text-slate-400 dark:text-slate-600">|</span>
+      <span className="whitespace-nowrap">
+        <span className="text-slate-700 dark:text-slate-300 font-medium">Вихід:</span>{' '}
+        {fmtNum(outputTokens)}
+      </span>
+      <span className="text-slate-400 dark:text-slate-600">|</span>
+      <span className="whitespace-nowrap font-semibold text-slate-700 dark:text-slate-300">
+        {fmtNum(totalTokens)}
+      </span>
+      <span className="hidden sm:inline text-slate-400 dark:text-slate-600">/</span>
+      <span className="hidden sm:inline whitespace-nowrap">{limitFmt}</span>
+      {/* Прогрес-бар контекстного вікна */}
+      <div className="flex-1 min-w-[60px] max-w-[200px] h-1.5 rounded-full bg-slate-300 dark:bg-slate-800 overflow-hidden">
+        <div
+          className={`h-full rounded-full transition-all duration-500 ${barColor}`}
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+      <span className="whitespace-nowrap text-[10px] opacity-70">{pct.toFixed(2)}%</span>
     </div>
   )
 }

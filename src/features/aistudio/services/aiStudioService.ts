@@ -3,6 +3,7 @@ import {
   type AiChatSession,
   type AiChatGroup,
   type N8nChatPayload,
+  type TokenUsage,
 } from '../types'
 import { BUILT_IN_PROFILES, N8N_CHAT_WEBHOOK_URL } from '../defaultProfiles'
 
@@ -208,7 +209,7 @@ export async function sendAiStudioMessage(params: {
     email?: string | null
     isPro: boolean
   }
-}): Promise<{ text: string }> {
+}): Promise<{ text: string; usage: TokenUsage | null }> {
   const { session, profile, userMessage, attachments, userProfile } = params
 
   const payload: N8nChatPayload = {
@@ -251,7 +252,9 @@ export async function sendAiStudioMessage(params: {
     if (contentType.includes('application/json')) {
       const json = await response.json()
       let extracted = ''
+      let usage: TokenUsage | null = null
 
+      // --- Парсинг тексту відповіді ---
       if (typeof json === 'string') {
         extracted = json
       } else if (Array.isArray(json) && json[0]) {
@@ -265,7 +268,10 @@ export async function sendAiStudioMessage(params: {
           item.json?.text ||
           item.json?.message ||
           JSON.stringify(item, null, 2)
-      } else if (typeof json === 'object') {
+        // Шукаємо usage в першому елементі
+        const raw = item.usage || item.tokenUsage || item.json?.usage || item.json?.tokenUsage
+        if (raw) usage = parseUsage(raw)
+      } else if (typeof json === 'object' && json !== null) {
         extracted =
           json.output ||
           json.text ||
@@ -273,15 +279,20 @@ export async function sendAiStudioMessage(params: {
           json.response ||
           json.result ||
           JSON.stringify(json, null, 2)
+        // Шукаємо usage на верхньому рівні
+        const raw = json.usage || json.tokenUsage
+        if (raw) usage = parseUsage(raw)
       }
 
       return {
         text: extracted || 'Отримано порожню відповідь від n8n.',
+        usage,
       }
     } else {
       const text = await response.text()
       return {
         text: text || 'Отримано відповідь без тексту.',
+        usage: null,
       }
     }
   } catch (err: unknown) {
@@ -289,4 +300,29 @@ export async function sendAiStudioMessage(params: {
     console.error('Помилка надсилання на n8n webhook:', errorMsg)
     throw new Error(`Не вдалося з'єднатися з n8n: ${errorMsg}`)
   }
+}
+
+// Допоміжна функція: нормалізує різні формати usage що повертає n8n
+function parseUsage(raw: Record<string, number>): TokenUsage | null {
+  if (!raw || typeof raw !== 'object') return null
+  // Підтримуємо назви полів від n8n AI-нод і OpenAI-сумісних провайдерів
+  const inputTokens =
+    raw.inputTokens ??
+    raw.input_tokens ??
+    raw.promptTokens ??
+    raw.prompt_tokens ??
+    raw.totalInputTokens ??
+    0
+  const outputTokens =
+    raw.outputTokens ??
+    raw.output_tokens ??
+    raw.completionTokens ??
+    raw.completion_tokens ??
+    raw.totalOutputTokens ??
+    0
+  const totalTokens =
+    raw.totalTokens ??
+    raw.total_tokens ??
+    (inputTokens + outputTokens)
+  return { inputTokens, outputTokens, totalTokens }
 }

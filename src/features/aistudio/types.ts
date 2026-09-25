@@ -17,6 +17,12 @@ export interface AiChatGroup {
   createdAt: number
 }
 
+export interface TokenUsage {
+  inputTokens: number
+  outputTokens: number
+  totalTokens: number
+}
+
 export interface AiMessageAttachment {
   id: string
   name: string
@@ -34,7 +40,9 @@ export interface AiMessage {
   profileName?: string | null
   attachments?: AiMessageAttachment[]
   isError?: boolean
+  usage?: TokenUsage | null // токени за цей запит (лише у повідомленнях асистента)
 }
+
 
 export interface AiChatSession {
   id: string

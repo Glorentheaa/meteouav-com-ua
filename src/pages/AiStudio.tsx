@@ -87,6 +87,19 @@ export const AiStudio: React.FC = () => {
     sessions.find((s) => s.id === activeSessionId) || null
   const currentMessages = activeSession?.messages || []
 
+  // Накопичений підрахунок токенів за поточну сесію
+  const sessionTokenUsage = currentMessages.reduce(
+    (acc, msg) => {
+      if (msg.role === 'assistant' && msg.usage) {
+        acc.inputTokens += msg.usage.inputTokens
+        acc.outputTokens += msg.usage.outputTokens
+        acc.totalTokens += msg.usage.totalTokens
+      }
+      return acc
+    },
+    { inputTokens: 0, outputTokens: 0, totalTokens: 0 }
+  )
+
   // Зміна активного профілю
   const handleSelectProfile = (profileId: string | null) => {
     setActiveProfileId(profileId)
@@ -273,6 +286,7 @@ export const AiStudio: React.FC = () => {
         timestamp: Date.now(),
         profileId: activeProfile?.id || null,
         profileName: activeProfile?.name || null,
+        usage: response.usage || null,
       }
 
       const finalSession: AiChatSession = {
@@ -371,6 +385,7 @@ export const AiStudio: React.FC = () => {
           userName={profile?.nickname || user.email?.split('@')[0] || 'Користувачу'}
           userAvatar={profile?.avatar_url}
           isGenerating={isGenerating}
+          sessionTokenUsage={sessionTokenUsage}
           onCopyMessage={(_text) => {}}
         />
 
