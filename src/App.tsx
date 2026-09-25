@@ -10,6 +10,7 @@ import { About } from './pages/About'
 import { Legal } from './pages/Legal'
 import { MeteoApp } from './pages/MeteoApp'
 import { MapPage } from './pages/MapPage'
+import { AiStudio } from './pages/AiStudio'
 
 export function App() {
   return (
@@ -28,6 +29,9 @@ export function App() {
             <Route path="/about" element={<About />} />
             <Route path="/legal" element={<Legal />} />
           </Route>
+
+          {/* AI Studio (доступна виключно за прямим посиланням після авторизації) */}
+          <Route path="/aistudio" element={<AiStudio />} />
 
           {/* Редирект для невідомих адрес */}
           <Route path="*" element={<Navigate to="/" replace />} />
