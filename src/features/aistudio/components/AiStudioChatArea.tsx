@@ -5,9 +5,11 @@ import {
   FileText,
   Bot,
   Sparkles,
-  Zap,
+  Scissors,
+  EyeOff,
+  Eye,
 } from 'lucide-react'
-import { type AiProfile, type AiMessage, type TokenUsage } from '../types'
+import { type AiProfile, type AiMessage } from '../types'
 import { GemIcon, getProfileColorClasses } from './GemIcon'
 import { GeminiMarkdown } from './GeminiMarkdown'
 import { getInitials } from '../../../utils/gravatar'
@@ -20,13 +22,7 @@ interface AiStudioChatAreaProps {
   isGenerating: boolean
   sessionTokenUsage: { inputTokens: number; outputTokens: number; totalTokens: number }
   onCopyMessage: (text: string) => void
-}
-
-// Ліміт контекстного вікна: Gemini 3.8 Flash (API)
-const CONTEXT_WINDOW_LIMIT: TokenUsage = {
-  inputTokens: 1_048_576,
-  outputTokens: 65_536,
-  totalTokens: 1_048_576,
+  onUpdateMessage?: (messageId: string, patch: { isExcludedFromHistory?: boolean; isCutPoint?: boolean }) => void
 }
 
 export const AiStudioChatArea: React.FC<AiStudioChatAreaProps> = ({
@@ -35,8 +31,8 @@ export const AiStudioChatArea: React.FC<AiStudioChatAreaProps> = ({
   userName = 'Користувачу',
   userAvatar,
   isGenerating,
-  sessionTokenUsage,
   onCopyMessage,
+  onUpdateMessage,
 }) => {
   const bottomRef = useRef<HTMLDivElement>(null)
   const [copiedId, setCopiedId] = React.useState<string | null>(null)
@@ -51,6 +47,14 @@ export const AiStudioChatArea: React.FC<AiStudioChatAreaProps> = ({
     setCopiedId(id)
     setTimeout(() => setCopiedId(null), 2000)
     onCopyMessage(text)
+  }
+
+  const handleToggleCutPoint = (msg: AiMessage) => {
+    onUpdateMessage?.(msg.id, { isCutPoint: !msg.isCutPoint })
+  }
+
+  const handleToggleExclude = (msg: AiMessage) => {
+    onUpdateMessage?.(msg.id, { isExcludedFromHistory: !msg.isExcludedFromHistory })
   }
 
   // --- СТАН 1: СТАРТОВИЙ ЕКРАН / НОВА СЕСІЯ ---
@@ -102,17 +106,18 @@ export const AiStudioChatArea: React.FC<AiStudioChatAreaProps> = ({
 
   // --- СТАН 2: АКТИВНИЙ ДІАЛОГ ---
   return (
-    <>
-      <div className="flex-1 overflow-y-auto px-3 sm:px-6 py-6 space-y-6 max-w-4xl mx-auto w-full">
+    <div className="flex-1 overflow-y-auto px-3 sm:px-6 py-6 space-y-6 max-w-4xl mx-auto w-full">
       {messages.map((message) => {
         const isUser = message.role === 'user'
+        const isExcluded = !!message.isExcludedFromHistory
+        const isCut = !!message.isCutPoint
 
         return (
           <div
             key={message.id}
             className={`flex items-start gap-3 sm:gap-4 animate-in fade-in duration-200 ${
               isUser ? 'flex-row-reverse' : 'flex-row'
-            }`}
+            } ${isExcluded ? 'opacity-40' : ''}`}
           >
             {/* Аватар */}
             {isUser ? (
@@ -164,6 +169,16 @@ export const AiStudioChatArea: React.FC<AiStudioChatAreaProps> = ({
                     minute: '2-digit',
                   })}
                 </span>
+                {isCut && (
+                  <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30">
+                    ✂ Відсік
+                  </span>
+                )}
+                {isExcluded && (
+                  <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-300/50 text-slate-500 border border-slate-400/30">
+                    Виключено
+                  </span>
+                )}
               </div>
 
               {/* Прикріплені файли */}
@@ -187,36 +202,67 @@ export const AiStudioChatArea: React.FC<AiStudioChatAreaProps> = ({
                   {message.content}
                 </div>
               ) : (
-                <div className="space-y-2">
-                  <div
-                    className={`rounded-2xl rounded-tl-none p-4 sm:p-5 shadow-2xs border ${
-                      message.isError
-                        ? 'bg-rose-500/10 border-rose-500/30 text-rose-700 dark:text-rose-300'
-                        : 'bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-800 text-slate-900 dark:text-slate-100'
-                    }`}
-                  >
-                    <GeminiMarkdown content={message.content} />
-                  </div>
-
-                  {/* Кнопка копіювання */}
-                  {!message.isError && (
-                    <div className="flex items-center gap-2 pt-0.5 pl-1">
-                      <button
-                        type="button"
-                        onClick={() => handleCopy(message.id, message.content)}
-                        className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors"
-                        title="Скопіювати відповідь"
-                      >
-                        {copiedId === message.id ? (
-                          <Check className="w-4 h-4 text-emerald-500" />
-                        ) : (
-                          <Copy className="w-4 h-4" />
-                        )}
-                      </button>
-                    </div>
-                  )}
+                <div
+                  className={`rounded-2xl rounded-tl-none p-4 sm:p-5 shadow-2xs border ${
+                    message.isError
+                      ? 'bg-rose-500/10 border-rose-500/30 text-rose-700 dark:text-rose-300'
+                      : 'bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-800 text-slate-900 dark:text-slate-100'
+                  }`}
+                >
+                  <GeminiMarkdown content={message.content} />
                 </div>
               )}
+
+              {/* Кнопки під повідомленням */}
+              <div className={`flex items-center gap-1 mt-1.5 ${isUser ? 'justify-end' : 'justify-start pl-1'}`}>
+                {/* Кнопка копіювання (для відповідей AI) */}
+                {!isUser && !message.isError && (
+                  <button
+                    type="button"
+                    onClick={() => handleCopy(message.id, message.content)}
+                    className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors"
+                    title="Скопіювати відповідь"
+                  >
+                    {copiedId === message.id ? (
+                      <Check className="w-3.5 h-3.5 text-emerald-500" />
+                    ) : (
+                      <Copy className="w-3.5 h-3.5" />
+                    )}
+                  </button>
+                )}
+
+                {/* ✂ Ножиці — відсікає історію від цього повідомлення */}
+                <button
+                  type="button"
+                  onClick={() => handleToggleCutPoint(message)}
+                  className={`p-1.5 rounded-lg transition-colors ${
+                    isCut
+                      ? 'text-amber-600 dark:text-amber-400 bg-amber-500/10 hover:bg-amber-500/20'
+                      : 'text-slate-400 hover:text-amber-600 dark:hover:text-amber-400 hover:bg-slate-200 dark:hover:bg-slate-800'
+                  }`}
+                  title={isCut ? 'Зняти відсік' : 'Відсікти тут — history надсилається тільки після цього повідомлення'}
+                >
+                  <Scissors className="w-3.5 h-3.5" />
+                </button>
+
+                {/* 👁 Oko — виключити повідомлення з history */}
+                <button
+                  type="button"
+                  onClick={() => handleToggleExclude(message)}
+                  className={`p-1.5 rounded-lg transition-colors ${
+                    isExcluded
+                      ? 'text-slate-600 dark:text-slate-400 bg-slate-300/50 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700'
+                      : 'text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-800'
+                  }`}
+                  title={isExcluded ? 'Включити назад у history' : 'Виключити це повідомлення з history (AI не бачитиме)'}
+                >
+                  {isExcluded ? (
+                    <Eye className="w-3.5 h-3.5" />
+                  ) : (
+                    <EyeOff className="w-3.5 h-3.5" />
+                  )}
+                </button>
+              </div>
             </div>
           </div>
         )
@@ -250,57 +296,6 @@ export const AiStudioChatArea: React.FC<AiStudioChatAreaProps> = ({
       )}
 
       <div ref={bottomRef} />
-      </div>
-      <TokenStatusBar usage={sessionTokenUsage} />
-    </>
-  )
-}
-
-// ---------- Компонент лічильника токенів ----------
-const TokenStatusBar: React.FC<{
-  usage: { inputTokens: number; outputTokens: number; totalTokens: number }
-}> = ({ usage }) => {
-  const { inputTokens, outputTokens, totalTokens } = usage
-  if (totalTokens === 0) return null
-
-  const pct = Math.min((totalTokens / CONTEXT_WINDOW_LIMIT.totalTokens) * 100, 100)
-  const fmtNum = (n: number) => n.toLocaleString('uk-UA')
-  const limitFmt = fmtNum(CONTEXT_WINDOW_LIMIT.totalTokens)
-
-  // Колір прогрес-бара залежно від засповненості
-  const barColor =
-    pct >= 85
-      ? 'bg-rose-500'
-      : pct >= 60
-      ? 'bg-amber-400'
-      : 'bg-emerald-500'
-
-  return (
-    <div className="px-4 py-1.5 border-t border-slate-300 dark:border-slate-800 bg-slate-200 dark:bg-slate-950 flex items-center gap-3 text-[11px] text-slate-500 dark:text-slate-400 select-none">
-      <Zap className="w-3 h-3 text-emerald-500 shrink-0" />
-      <span className="whitespace-nowrap">
-        <span className="text-slate-700 dark:text-slate-300 font-medium">Вхід:</span>{' '}
-        {fmtNum(inputTokens)}
-      </span>
-      <span className="text-slate-400 dark:text-slate-600">|</span>
-      <span className="whitespace-nowrap">
-        <span className="text-slate-700 dark:text-slate-300 font-medium">Вихід:</span>{' '}
-        {fmtNum(outputTokens)}
-      </span>
-      <span className="text-slate-400 dark:text-slate-600">|</span>
-      <span className="whitespace-nowrap font-semibold text-slate-700 dark:text-slate-300">
-        {fmtNum(totalTokens)}
-      </span>
-      <span className="hidden sm:inline text-slate-400 dark:text-slate-600">/</span>
-      <span className="hidden sm:inline whitespace-nowrap">{limitFmt}</span>
-      {/* Прогрес-бар контекстного вікна */}
-      <div className="flex-1 min-w-[60px] max-w-[200px] h-1.5 rounded-full bg-slate-300 dark:bg-slate-800 overflow-hidden">
-        <div
-          className={`h-full rounded-full transition-all duration-500 ${barColor}`}
-          style={{ width: `${pct}%` }}
-        />
-      </div>
-      <span className="whitespace-nowrap text-[10px] opacity-70">{pct.toFixed(2)}%</span>
     </div>
   )
 }

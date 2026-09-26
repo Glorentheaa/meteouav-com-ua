@@ -43,8 +43,10 @@ export const AiStudio: React.FC = () => {
     }
   }, [theme])
 
-  // Бічна панель: відкрита за замовчуванням на екранах від 1024px
+  // Бічна панель: стан зберігається в localStorage
   const [isSidebarOpen, setIsSidebarOpen] = useState(() => {
+    const saved = localStorage.getItem('meteo_aistudio_sidebar_open')
+    if (saved !== null) return saved === 'true'
     if (typeof window !== 'undefined') {
       return window.innerWidth >= 1024
     }
@@ -214,7 +216,12 @@ export const AiStudio: React.FC = () => {
   // Відправка повідомлення на n8n webhook
   const handleSendMessage = async (
     text: string,
-    attachments: AiMessageAttachment[] = []
+    attachments: AiMessageAttachment[] = [],
+    commandFlags?: {
+      codeOnly?: boolean
+      search?: boolean
+      thinking?: boolean
+    }
   ) => {
     if (!text.trim() && attachments.length === 0) return
 
@@ -277,6 +284,9 @@ export const AiStudio: React.FC = () => {
               isPro: profile.is_pro,
             }
           : undefined,
+        codeOnly: commandFlags?.codeOnly,
+        search: commandFlags?.search,
+        thinking: commandFlags?.thinking,
       })
 
       const assistantMessage: AiMessage = {
@@ -320,6 +330,19 @@ export const AiStudio: React.FC = () => {
     } finally {
       setIsGenerating(false)
     }
+  }
+
+  // Оновлення прапорів повідомлення (виключення / cut-point)
+  const handleUpdateMessage = (messageId: string, patch: { isExcludedFromHistory?: boolean; isCutPoint?: boolean }) => {
+    if (!activeSessionId) return
+    const session = sessions.find((s) => s.id === activeSessionId)
+    if (!session) return
+    const updatedMessages = session.messages.map((m) =>
+      m.id === messageId ? { ...m, ...patch } : m
+    )
+    const updatedSession = { ...session, messages: updatedMessages, updatedAt: Date.now() }
+    const updatedList = AiStudioStorage.saveSession(updatedSession)
+    setSessions(updatedList)
   }
 
   // Захист сторінки (тільки після успішного входу)
@@ -387,6 +410,7 @@ export const AiStudio: React.FC = () => {
           isGenerating={isGenerating}
           sessionTokenUsage={sessionTokenUsage}
           onCopyMessage={(_text) => {}}
+          onUpdateMessage={handleUpdateMessage}
         />
 
         {/* Поле введення */}
@@ -396,6 +420,7 @@ export const AiStudio: React.FC = () => {
           onStopGeneration={() => setIsGenerating(false)}
           isGenerating={isGenerating}
           activeProfile={activeProfile}
+          sessionTokenUsage={sessionTokenUsage}
         />
       </div>
 

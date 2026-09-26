@@ -17,6 +17,8 @@ import {
   Check,
   X,
   Map,
+  Copy,
+  Ticket,
 } from 'lucide-react'
 import { useAuth } from '../context/useAuth'
 import { getInitials } from '../utils/gravatar'
@@ -34,6 +36,7 @@ export const Account: React.FC = () => {
     signOut,
     updatePassword,
     updateNickname,
+    generateInviteKey,
   } = useAuth()
 
   // Стан форми зміни пароля
@@ -49,6 +52,11 @@ export const Account: React.FC = () => {
   const [isEditingNickname, setIsEditingNickname] = useState(false)
   const [nicknameInput, setNicknameInput] = useState('')
   const [isSavingNickname, setIsSavingNickname] = useState(false)
+
+  // Стан генерації ключа запрошення
+  const [isGeneratingKey, setIsGeneratingKey] = useState(false)
+  const [keyCopied, setKeyCopied] = useState(false)
+  const [keyError, setKeyError] = useState<string | null>(null)
 
   // Якщо дані ще завантажуються
   if (loading) {
@@ -146,7 +154,26 @@ export const Account: React.FC = () => {
 
   const handleSignOut = async () => {
     await signOut()
-    navigate('/auth')
+    navigate('/')
+  }
+
+  const handleGenerateInviteKey = async () => {
+    setIsGeneratingKey(true)
+    setKeyError(null)
+    const { key, error } = await generateInviteKey()
+    setIsGeneratingKey(false)
+    if (error) {
+      setKeyError(error.message)
+    }
+    // key буде оновлено через profile
+    void key
+  }
+
+  const handleCopyInviteKey = () => {
+    if (!profile?.invite_key_generated) return
+    navigator.clipboard.writeText(profile.invite_key_generated)
+    setKeyCopied(true)
+    setTimeout(() => setKeyCopied(false), 2000)
   }
 
   // Форматування дати створення акаунта
@@ -453,7 +480,70 @@ export const Account: React.FC = () => {
         </form>
       </div>
 
-      {/* 5. Додаткова інформація про сесію */}
+      {/* ========================================================================= */}
+      {/* БЛОК 5: СИСТЕМА КЛЮЧІВ ЗАПРОШЕНЬ                                          */}
+      {/* ========================================================================= */}
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 rounded-2xl shadow-sm space-y-4">
+        <div className="flex items-center gap-2 pb-2 border-b border-slate-200 dark:border-slate-800">
+          <Ticket className="w-5 h-5 text-emerald-500" />
+          <h2 className="text-lg font-bold text-slate-900 dark:text-white">Ключ запрошення</h2>
+        </div>
+
+        <p className="text-xs text-slate-600 dark:text-slate-400">
+          Кожен учасник може згенерувати один ключ запрошення та передати його довіреній людині.
+          Ключ закріплюється за вашим акаунтом назавжди.
+        </p>
+
+        {keyError && (
+          <div className="p-3 bg-rose-500/10 border border-rose-500/30 rounded-xl flex items-center gap-2 text-rose-600 dark:text-rose-400 text-sm">
+            <AlertCircle className="w-4 h-4 shrink-0" />
+            <span>{keyError}</span>
+          </div>
+        )}
+
+        {profile?.invite_key_generated ? (
+          // Ключ вже згенеровано — показуємо його
+          <div className="flex items-center gap-2">
+            <div className="flex-1 px-3 py-2 bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl font-mono text-sm text-slate-800 dark:text-slate-200 tracking-wider select-all">
+              {profile.invite_key_generated}
+            </div>
+            <button
+              type="button"
+              onClick={handleCopyInviteKey}
+              className="flex items-center gap-1.5 px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-xl shadow transition-all"
+              title="Скопіювати ключ"
+            >
+              {keyCopied ? (
+                <><Check className="w-4 h-4" /><span>Скопійовано</span></>
+              ) : (
+                <><Copy className="w-4 h-4" /><span>Копіювати</span></>
+              )}
+            </button>
+          </div>
+        ) : (
+          // Ключ ще не згенеровано — показуємо кнопку
+          <button
+            type="button"
+            onClick={handleGenerateInviteKey}
+            disabled={isGeneratingKey}
+            className="flex items-center gap-2 px-4 py-2.5 bg-slate-800 hover:bg-slate-900 dark:bg-slate-700 dark:hover:bg-slate-600 text-white text-sm font-semibold rounded-xl shadow transition-all disabled:opacity-50"
+          >
+            {isGeneratingKey ? (
+              <><Loader2 className="w-4 h-4 animate-spin" /><span>Генерація...</span></>
+            ) : (
+              <><Ticket className="w-4 h-4" /><span>Згенерувати ключ запрошення</span></>
+            )}
+          </button>
+        )}
+
+        {profile?.registered_with_key && (
+          <p className="text-[11px] text-slate-400 dark:text-slate-500">
+            Ви зареєструвались за ключем: <span className="font-mono">{profile.registered_with_key}</span>
+          </p>
+        )}
+      </div>
+
+      {/* 6. Додаткова інформація про сесію */}
       <div className="text-center text-xs text-slate-400 dark:text-slate-500 pb-4">
         Тривалість поточної сесії авторизації: 31 день від моменту входу.
       </div>

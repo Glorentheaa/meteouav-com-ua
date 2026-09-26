@@ -6,17 +6,30 @@ import {
   X,
   FileText,
   Image as ImageIcon,
+  Scissors,
+  Code2,
+  Search,
+  BrainCircuit,
+  Zap,
 } from 'lucide-react'
 import { type AiProfile, type AiMessageAttachment } from '../types'
 import { GemIcon, getProfileColorClasses } from './GemIcon'
 
+// Ліміт контекстного вікна
+const CONTEXT_WINDOW_LIMIT_TOTAL = 1_048_576
+
 interface AiStudioInputProps {
-  onSendMessage: (text: string, attachments: AiMessageAttachment[]) => void
+  onSendMessage: (
+    text: string,
+    attachments: AiMessageAttachment[],
+    commandFlags?: { codeOnly?: boolean; search?: boolean; thinking?: boolean }
+  ) => void
   onStopGeneration?: () => void
   isGenerating: boolean
   activeProfile: AiProfile | null
   disabled?: boolean
   inputRef?: React.RefObject<HTMLTextAreaElement | null>
+  sessionTokenUsage?: { inputTokens: number; outputTokens: number; totalTokens: number }
 }
 
 export const AiStudioInput: React.FC<AiStudioInputProps> = ({
@@ -26,12 +39,18 @@ export const AiStudioInput: React.FC<AiStudioInputProps> = ({
   activeProfile,
   disabled = false,
   inputRef: externalInputRef,
+  sessionTokenUsage,
 }) => {
   const [text, setText] = useState('')
   const [attachments, setAttachments] = useState<AiMessageAttachment[]>([])
   const internalRef = useRef<HTMLTextAreaElement>(null)
   const textareaRef = externalInputRef || internalRef
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  // Стан команд
+  const [codeOnly, setCodeOnly] = useState(false)
+  const [search, setSearch] = useState(false)
+  const [thinking, setThinking] = useState(false)
 
   // Автопідлаштування висоти textarea
   useEffect(() => {
@@ -51,12 +70,26 @@ export const AiStudioInput: React.FC<AiStudioInputProps> = ({
 
   const handleSubmit = () => {
     if ((!text.trim() && attachments.length === 0) || isGenerating || disabled) return
-    onSendMessage(text.trim(), attachments)
+
+    let finalText = text.trim()
+
+    // Додаємо суфікси команд до тексту
+    if (codeOnly) finalText += ' /codeonly'
+    if (search) finalText += ' /search'
+    if (thinking) finalText += ' /thinking'
+
+    onSendMessage(finalText, attachments, { codeOnly, search, thinking })
     setText('')
     setAttachments([])
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto'
     }
+  }
+
+  // Summarize & Compress — відправка команди /summarize
+  const handleSummarize = () => {
+    if (isGenerating || disabled) return
+    onSendMessage('/summarize', [], {})
   }
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -87,8 +120,104 @@ export const AiStudioInput: React.FC<AiStudioInputProps> = ({
     setAttachments((prev) => prev.filter((a) => a.id !== id))
   }
 
+  // Форматування числа
+  const fmtNum = (n: number) => n.toLocaleString('uk-UA')
+
+  const totalTokens = sessionTokenUsage?.totalTokens || 0
+  const pct = totalTokens > 0 ? Math.min((totalTokens / CONTEXT_WINDOW_LIMIT_TOTAL) * 100, 100) : 0
+  const barColor =
+    pct >= 85 ? 'bg-rose-500' : pct >= 60 ? 'bg-amber-400' : 'bg-emerald-500'
+
   return (
     <div className="w-full max-w-4xl mx-auto px-3 sm:px-6 pb-4">
+      {/* Лічильник токенів над полем вводу — ліва сторона */}
+      {totalTokens > 0 && (
+        <div className="flex items-center gap-2 text-[11px] text-slate-500 dark:text-slate-400 mb-1.5 select-none">
+          <Zap className="w-3 h-3 text-emerald-500 shrink-0" />
+          <span className="whitespace-nowrap">
+            <span className="text-slate-600 dark:text-slate-300 font-medium">Вхід:</span>{' '}
+            {fmtNum(sessionTokenUsage?.inputTokens || 0)}
+          </span>
+          <span className="text-slate-400 dark:text-slate-600">|</span>
+          <span className="whitespace-nowrap">
+            <span className="text-slate-600 dark:text-slate-300 font-medium">Вихід:</span>{' '}
+            {fmtNum(sessionTokenUsage?.outputTokens || 0)}
+          </span>
+          <span className="text-slate-400 dark:text-slate-600">|</span>
+          <span className="whitespace-nowrap font-semibold text-slate-700 dark:text-slate-300">
+            {fmtNum(totalTokens)}
+          </span>
+          {/* Мінімальний прогрес-бар */}
+          <div className="flex-1 min-w-[40px] max-w-[100px] h-1 rounded-full bg-slate-300 dark:bg-slate-800 overflow-hidden">
+            <div
+              className={`h-full rounded-full transition-all duration-500 ${barColor}`}
+              style={{ width: `${pct}%` }}
+            />
+          </div>
+          <span className="text-[10px] opacity-60">{pct.toFixed(1)}%</span>
+        </div>
+      )}
+
+      {/* Рядок команд */}
+      <div className="flex items-center gap-1.5 mb-1.5 flex-wrap">
+        {/* Summarize & Compress */}
+        <button
+          type="button"
+          onClick={handleSummarize}
+          disabled={isGenerating || disabled}
+          className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:border-emerald-500 text-[11px] font-medium transition-colors disabled:opacity-40"
+          title="Стиснути і підсумувати контекст (надсилає /summarize)"
+        >
+          <Scissors className="w-3 h-3 text-emerald-500" />
+          <span>Summarize &amp; Compress</span>
+        </button>
+
+        {/* Чекбокс "Тільки код" */}
+        <button
+          type="button"
+          onClick={() => setCodeOnly((v) => !v)}
+          className={`flex items-center gap-1 px-2.5 py-1 rounded-lg border text-[11px] font-medium transition-colors ${
+            codeOnly
+              ? 'bg-sky-500/15 border-sky-500/60 text-sky-700 dark:text-sky-400'
+              : 'bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:border-sky-400'
+          }`}
+          title="Додає /codeonly до запиту — відповідь лише з кодом"
+        >
+          <Code2 className="w-3 h-3" />
+          <span>Тільки код</span>
+        </button>
+
+        {/* Чекбокс "Пошук" */}
+        <button
+          type="button"
+          onClick={() => setSearch((v) => !v)}
+          className={`flex items-center gap-1 px-2.5 py-1 rounded-lg border text-[11px] font-medium transition-colors ${
+            search
+              ? 'bg-emerald-500/15 border-emerald-500/60 text-emerald-700 dark:text-emerald-400'
+              : 'bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:border-emerald-400'
+          }`}
+          title="Додає /search до запиту — увімкнути пошук"
+        >
+          <Search className="w-3 h-3" />
+          <span>Пошук</span>
+        </button>
+
+        {/* Чекбокс "Thinking" */}
+        <button
+          type="button"
+          onClick={() => setThinking((v) => !v)}
+          className={`flex items-center gap-1 px-2.5 py-1 rounded-lg border text-[11px] font-medium transition-colors ${
+            thinking
+              ? 'bg-purple-500/15 border-purple-500/60 text-purple-700 dark:text-purple-400'
+              : 'bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:border-purple-400'
+          }`}
+          title="Додає /thinking до запиту — глибоке мислення"
+        >
+          <BrainCircuit className="w-3 h-3" />
+          <span>Thinking</span>
+        </button>
+      </div>
+
       {/* Контейнер форми введення */}
       <div className="relative bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-800 rounded-2xl sm:rounded-3xl shadow-md focus-within:ring-2 focus-within:ring-emerald-500/40 focus-within:border-emerald-500 transition-all overflow-hidden">
         {/* Прикріплені файли */}
@@ -155,7 +284,7 @@ export const AiStudioInput: React.FC<AiStudioInputProps> = ({
               <Paperclip className="w-4 h-4" />
             </button>
 
-            {/* Бейдж обраного профілю з його кольором */}
+            {/* Бейдж обраного профілю */}
             {activeProfile && (
               <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-semibold border border-slate-200 dark:border-slate-700">
                 <div
@@ -199,11 +328,6 @@ export const AiStudioInput: React.FC<AiStudioInputProps> = ({
           </div>
         </div>
       </div>
-
-      {/* Дисклеймер у стилі сайту */}
-      <p className="text-[11px] text-center text-slate-500 dark:text-slate-400 mt-2 px-2">
-        AI Studio може припускатися неточностей. Перевіряйте важливу інформацію.
-      </p>
     </div>
   )
 }

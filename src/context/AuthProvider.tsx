@@ -7,6 +7,14 @@ import { AuthContext, type UserProfile } from './authContextDef'
 const LOGIN_TIMESTAMP_KEY = 'meteo_auth_login_timestamp'
 const SESSION_MAX_AGE_MS = 31 * 24 * 60 * 60 * 1000 // 31 день у мілісекундах
 
+/** Генерує унікальний ключ запрошення формату XXXX-XXXX-XXXX-XXXX */
+function generateRandomKey(): string {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
+  const seg = () =>
+    Array.from({ length: 4 }, () => chars[Math.floor(Math.random() * chars.length)]).join('')
+  return `${seg()}-${seg()}-${seg()}-${seg()}`
+}
+
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null)
   const [session, setSession] = useState<Session | null>(null)
@@ -60,6 +68,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         is_pro: Boolean(data?.is_pro),
         pro_until: data?.pro_until ?? null,
         created_at: data?.created_at || currentUser.created_at,
+        invite_key_generated: data?.invite_key_generated ?? null,
+        registered_with_key: data?.registered_with_key ?? null,
       }
 
       setProfile(userProfile)
@@ -162,7 +172,39 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return { error: error ? new Error(error.message) : null }
   }
 
-  const signUp = async (email: string, password: string, nickname: string) => {
+  const signUp = async (email: string, password: string, nickname: string, inviteKey: string) => {
+    // 1. Перевіряємо ключ запрошення в таблиці profiles
+    const trimmedKey = inviteKey.trim().toUpperCase()
+    if (!trimmedKey) {
+      return {
+        error: new Error('Необхідно вказати ключ запрошення.'),
+        invalidInviteKey: true,
+      }
+    }
+
+    // Шукаємо ключ у базі (у полі invite_key_generated)
+    const { data: keyOwner, error: keyError } = await supabase
+      .from('profiles')
+      .select('id, invite_key_generated')
+      .eq('invite_key_generated', trimmedKey)
+      .maybeSingle()
+
+    if (keyError) {
+      console.error('Помилка перевірки ключа:', keyError.message)
+      return {
+        error: new Error('Помилка перевірки ключа запрошення. Спробуйте пізніше.'),
+        invalidInviteKey: false,
+      }
+    }
+
+    if (!keyOwner) {
+      return {
+        error: new Error('Ключ запрошення не дійсний або не існує.'),
+        invalidInviteKey: true,
+      }
+    }
+
+    // 2. Реєструємо користувача
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
@@ -187,14 +229,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     }
 
-    // Захист від розкриття користувачів у Supabase (Prevent user enumeration):
-    // Якщо користувач вже існує, але увімкнено захист або підтвердження пошти,
-    // Supabase повертає об'єкт користувача з порожнім масивом identities [].
+    // Захист від розкриття користувачів у Supabase:
     if (data.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) {
       return {
         error: new Error('Користувач з такою поштою вже існує.'),
         userAlreadyExists: true,
       }
+    }
+
+    // 3. Зберігаємо registered_with_key у профілі
+    if (data.user) {
+      await supabase
+        .from('profiles')
+        .upsert({
+          id: data.user.id,
+          email: email,
+          nickname: nickname,
+          registered_with_key: trimmedKey,
+        })
     }
 
     if (data.session && data.user) {
@@ -255,6 +307,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }
 
+  /** Генерує унікальний ключ запрошення для поточного користувача (одноразово) */
+  const generateInviteKey = async (): Promise<{ key: string | null; error: Error | null }> => {
+    if (!user) return { key: null, error: new Error('Користувач не авторизований') }
+    if (profile?.invite_key_generated) {
+      return { key: profile.invite_key_generated, error: null }
+    }
+
+    const newKey = generateRandomKey()
+
+    const { error } = await supabase
+      .from('profiles')
+      .update({ invite_key_generated: newKey })
+      .eq('id', user.id)
+
+    if (error) {
+      return { key: null, error: new Error(error.message) }
+    }
+
+    setProfile((prev) => (prev ? { ...prev, invite_key_generated: newKey } : null))
+    return { key: newKey, error: null }
+  }
+
   return (
     <AuthContext.Provider
       value={{
@@ -272,6 +346,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         resetPassword,
         updateNickname,
         refreshProfile,
+        generateInviteKey,
       }}
     >
       {children}

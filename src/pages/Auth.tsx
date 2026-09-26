@@ -14,6 +14,7 @@ import {
   ArrowLeft,
   KeyRound,
   Send,
+  Key,
 } from 'lucide-react'
 import { useAuth } from '../context/useAuth'
 import { Captcha } from '../components/common/Captcha'
@@ -44,6 +45,7 @@ export const Auth: React.FC = () => {
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [nickname, setNickname] = useState('')
+  const [inviteKey, setInviteKey] = useState('')
 
   // Стан інтерфейсу
   const [showPassword, setShowPassword] = useState(false)
@@ -68,8 +70,7 @@ export const Auth: React.FC = () => {
     }
   }, [])
 
-  // Якщо користувач уже увійшов — перенаправляємо на /account,
-  // АЛЕ НЕ перенаправляємо, якщо користувач перейшов за посиланням відновлення пароля (mode === 'reset')
+  // Якщо користувач уже увійшов — перенаправляємо на /app
   useEffect(() => {
     const isRecovery =
       mode === 'reset' ||
@@ -77,7 +78,7 @@ export const Auth: React.FC = () => {
       searchParams.get('mode') === 'reset'
 
     if (!authLoading && user && !isRecovery) {
-      navigate('/account', { replace: true })
+      navigate('/app', { replace: true })
     }
   }, [user, authLoading, navigate, mode, searchParams])
 
@@ -138,7 +139,7 @@ export const Auth: React.FC = () => {
 
       setSuccessMsg('Пароль успішно оновлено! Перенаправляємо в особистий кабінет...')
       setTimeout(() => {
-        navigate('/account')
+        navigate('/app')
       }, 1500)
       return
     }
@@ -161,6 +162,11 @@ export const Auth: React.FC = () => {
         return
       }
 
+      if (!inviteKey.trim()) {
+        setErrorMsg('Будь ласка, введіть ключ запрошення.')
+        return
+      }
+
       if (password.length < 6) {
         setErrorMsg('Пароль має містити щонайменше 6 символів.')
         return
@@ -177,8 +183,13 @@ export const Auth: React.FC = () => {
       }
 
       setIsSubmitting(true)
-      const res = await signUp(trimmedEmail, password, nickname.trim())
+      const res = await signUp(trimmedEmail, password, nickname.trim(), inviteKey.trim())
       setIsSubmitting(false)
+
+      if (res.invalidInviteKey) {
+        setErrorMsg('Ключ запрошення не дійсний. Будь ласка, перевірте і спробуйте ще раз.')
+        return
+      }
 
       // Якщо пошта вже є в базі: відкриваємо вкладку входу та виводимо повідомлення
       const isAlreadyRegistered =
@@ -208,7 +219,7 @@ export const Auth: React.FC = () => {
         )
       } else {
         setSuccessMsg('Акаунт успішно створено!')
-        navigate('/account')
+        navigate('/app')
       }
       return
     }
@@ -230,7 +241,7 @@ export const Auth: React.FC = () => {
         return
       }
 
-      navigate('/account')
+      navigate('/app')
     }
   }
 
@@ -308,7 +319,7 @@ export const Auth: React.FC = () => {
             </h1>
             <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
               {mode === 'login' && 'Увійдіть, щоб отримати доступ до персональних налаштувань'}
-              {mode === 'register' && 'Зареєструйтеся для збереження локацій та розширених функцій'}
+              {mode === 'register' && 'Для реєстрації потрібен ключ запрошення від чинного учасника'}
               {mode === 'forgot' &&
                 'Введіть вашу пошту, і ми надішлемо безпечне посилання для встановлення нового пароля.'}
               {mode === 'reset' && 'Введіть новий надійний пароль для вашого облікового запису.'}
@@ -434,6 +445,33 @@ export const Auth: React.FC = () => {
               </div>
             )}
 
+            {/* ========================================================================= */}
+            {/* Поле ключа запрошення (тільки для реєстрації)                            */}
+            {/* ========================================================================= */}
+            {mode === 'register' && (
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">
+                  Ключ запрошення
+                </label>
+                <div className="relative">
+                  <Key className="w-5 h-5 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  <input
+                    type="text"
+                    required
+                    placeholder="XXXX-XXXX-XXXX-XXXX"
+                    value={inviteKey}
+                    onChange={(e) => setInviteKey(e.target.value.toUpperCase())}
+                    className="w-full pl-11 pr-4 py-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-sm transition-all font-mono tracking-wider"
+                    spellCheck={false}
+                    autoComplete="off"
+                  />
+                </div>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1.5">
+                  Отримайте ключ від діючого учасника платформи.
+                </p>
+              </div>
+            )}
+
             {/* Капча при реєстрації */}
             {mode === 'register' && (
               <div className="pt-1">
@@ -511,4 +549,3 @@ export const Auth: React.FC = () => {
     </div>
   )
 }
-

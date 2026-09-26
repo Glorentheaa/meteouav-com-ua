@@ -209,18 +209,39 @@ export async function sendAiStudioMessage(params: {
     email?: string | null
     isPro: boolean
   }
+  // Командні прапори
+  codeOnly?: boolean
+  search?: boolean
+  thinking?: boolean
 }): Promise<{ text: string; usage: TokenUsage | null }> {
-  const { session, profile, userMessage, attachments, userProfile } = params
+  const { session, profile, userMessage, attachments, userProfile, codeOnly, search, thinking } = params
+
+  // Визначаємо точку відсіку (остання isCutPoint === true) і фільтруємо history
+  const allMessages = session.messages
+  let historyMessages = allMessages
+
+  // Знаходимо останній cut-point
+  const lastCutIndex = allMessages.reduceRight((found, msg, i) => {
+    if (found >= 0) return found
+    return msg.isCutPoint ? i : -1
+  }, -1)
+
+  if (lastCutIndex >= 0) {
+    historyMessages = allMessages.slice(lastCutIndex + 1)
+  }
+
+  const history = historyMessages.slice(-10).map((m) => ({
+    role: m.role === 'assistant' ? 'assistant' as const : 'user' as const,
+    content: m.content,
+    excluded: m.isExcludedFromHistory || false,
+  }))
 
   const payload: N8nChatPayload = {
     chatInput: userMessage,
     message: userMessage,
     sessionId: session.id,
     sessionTitle: session.title,
-    history: session.messages.slice(-10).map((m) => ({
-      role: m.role === 'assistant' ? 'assistant' : 'user',
-      content: m.content,
-    })),
+    history,
     profile: profile
       ? {
           id: profile.id,
@@ -232,6 +253,11 @@ export async function sendAiStudioMessage(params: {
     attachments,
     user: userProfile,
     timestamp: new Date().toISOString(),
+    commands: {
+      codeOnly: codeOnly || false,
+      search: search || false,
+      thinking: thinking || false,
+    },
   }
 
   try {

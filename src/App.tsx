@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { MainLayout } from './components/layout/MainLayout'
 import { AuthProvider } from './context/AuthProvider'
+import { ProtectedRoute } from './components/common/ProtectedRoute'
 import { Home } from './pages/Home'
 import { Settings } from './pages/Settings'
 import { Auth } from './pages/Auth'
@@ -17,13 +18,17 @@ export function App() {
     <BrowserRouter>
       <AuthProvider>
         <Routes>
-          {/* Головний Layout огортає всі дочірні сторінки */}
-          <Route element={<MainLayout />}>
-            <Route path="/" element={<Home />} />
+          {/* Сторінка привітання (публічна, тільки для незалогінених) */}
+          <Route path="/" element={<Home />} />
+
+          {/* Сторінка авторизації (публічна) */}
+          <Route path="/auth" element={<Auth />} />
+
+          {/* Захищений Layout огортає всі дочірні сторінки що потребують авторизацію */}
+          <Route element={<ProtectedRoute><MainLayout /></ProtectedRoute>}>
             <Route path="/app" element={<MeteoApp />} />
             <Route path="/map" element={<MapPage />} />
             <Route path="/settings" element={<Settings />} />
-            <Route path="/auth" element={<Auth />} />
             <Route path="/account" element={<Account />} />
             <Route path="/donate" element={<Donate />} />
             <Route path="/about" element={<About />} />

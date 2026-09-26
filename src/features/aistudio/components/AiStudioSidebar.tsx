@@ -21,6 +21,8 @@ import {
 } from '../types'
 import { getInitials } from '../../../utils/gravatar'
 
+const SIDEBAR_STATE_KEY = 'meteo_aistudio_sidebar_open'
+
 interface AiStudioSidebarProps {
   isOpen: boolean
   onToggleOpen: () => void
@@ -77,6 +79,12 @@ export const AiStudioSidebar: React.FC<AiStudioSidebarProps> = ({
     }))
   }
 
+  // Збереження / зчитування стану панелі через localStorage
+  // Стан передається зовні (isOpen), але ми зберігаємо його при зміні
+  React.useEffect(() => {
+    localStorage.setItem(SIDEBAR_STATE_KEY, String(isOpen))
+  }, [isOpen])
+
   // Створення папки
   const handleCreateGroupSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -131,7 +139,7 @@ export const AiStudioSidebar: React.FC<AiStudioSidebarProps> = ({
             : '-translate-x-full md:translate-x-0 md:w-0 md:overflow-hidden md:border-r-0'
         }`}
       >
-        {/* Верхній рядок: Тільки назва "Керування чатами", без повторної кнопки закриття */}
+        {/* Верхній рядок */}
         <div className="flex items-center justify-between h-16 px-4 border-b border-slate-300 dark:border-slate-800">
           <span className="font-bold text-sm text-slate-800 dark:text-slate-200 tracking-wide">
             Керування чатами
@@ -141,8 +149,8 @@ export const AiStudioSidebar: React.FC<AiStudioSidebarProps> = ({
           </span>
         </div>
 
-        {/* Кнопки: Новий чат + Створити папку */}
-        <div className="p-3 space-y-2 border-b border-slate-300/70 dark:border-slate-800/80">
+        {/* Кнопка: Новий чат */}
+        <div className="p-3 border-b border-slate-300/70 dark:border-slate-800/80">
           <button
             type="button"
             onClick={onNewSession}
@@ -152,54 +160,9 @@ export const AiStudioSidebar: React.FC<AiStudioSidebarProps> = ({
             <Plus className="w-4 h-4 group-hover:scale-110 transition-transform" />
             <span>Новий чат</span>
           </button>
-
-          <button
-            type="button"
-            onClick={() => setIsCreatingFolder(true)}
-            className="flex items-center justify-center gap-2 w-full py-1.5 rounded-xl bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-800 font-medium text-xs transition-colors"
-            title="Створити нову папку"
-          >
-            <FolderPlus className="w-3.5 h-3.5 text-emerald-500" />
-            <span>+ Створити папку</span>
-          </button>
-
-          {/* Форма створення папки */}
-          {isCreatingFolder && (
-            <form
-              onSubmit={handleCreateGroupSubmit}
-              className="p-2 bg-white dark:bg-slate-900 rounded-xl border border-emerald-500 shadow-sm space-y-2 animate-in fade-in duration-150"
-            >
-              <input
-                type="text"
-                autoFocus
-                value={newFolderName}
-                onChange={(e) => setNewFolderName(e.target.value)}
-                placeholder="Назва нової папки..."
-                className="w-full px-2 py-1 text-xs rounded border border-slate-300 dark:border-slate-700 bg-transparent text-slate-800 dark:text-slate-100 focus:outline-none"
-              />
-              <div className="flex justify-end gap-1">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsCreatingFolder(false)
-                    setNewFolderName('')
-                  }}
-                  className="px-2 py-0.5 text-xs text-slate-500 hover:text-slate-700"
-                >
-                  Скасувати
-                </button>
-                <button
-                  type="submit"
-                  className="px-2.5 py-0.5 text-xs bg-emerald-600 text-white rounded font-medium hover:bg-emerald-700"
-                >
-                  Створити
-                </button>
-              </div>
-            </form>
-          )}
         </div>
 
-        {/* Прокручувана область: Спільний заголовок "Історія чатів" */}
+        {/* Прокручувана область: Блок з чатами та папками */}
         <div className="flex-1 overflow-y-auto px-2 py-3 space-y-4">
           <div className="px-2 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
             Історія чатів
@@ -333,47 +296,98 @@ export const AiStudioSidebar: React.FC<AiStudioSidebarProps> = ({
           </div>
         </div>
 
-        {/* НИЖНЯ ПАНЕЛЬ: ПРОФІЛЬ + ПОВЕРНЕННЯ ДО METEOUAV */}
-        <div className="p-3 border-t border-slate-300 dark:border-slate-800 space-y-2 bg-slate-200/60 dark:bg-slate-950">
-          <Link
-            to="/app"
-            className="flex items-center gap-2.5 w-full px-3 py-2 rounded-xl text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-300/80 dark:hover:bg-slate-900 transition-colors text-xs font-semibold"
-            title="Повернутися до застосунку MeteoUAV"
-          >
-            <ArrowLeft className="w-4 h-4 text-emerald-500 shrink-0" />
-            <span>До MeteoUAV</span>
-          </Link>
+        {/* НИЖНЯ ПАНЕЛЬ: Кнопка "Створити папку" + роздільник + Профіль + Повернення */}
+        <div className="border-t border-slate-300 dark:border-slate-800 bg-slate-200/60 dark:bg-slate-950">
+          {/* Кнопка "Створити папку" */}
+          <div className="p-3 border-b border-slate-300/70 dark:border-slate-800/80">
+            <button
+              type="button"
+              onClick={() => setIsCreatingFolder(true)}
+              className="flex items-center justify-center gap-2 w-full py-1.5 rounded-xl bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-800 font-medium text-xs transition-colors"
+              title="Створити нову папку"
+            >
+              <FolderPlus className="w-3.5 h-3.5 text-emerald-500" />
+              <span>+ Створити папку</span>
+            </button>
 
-          {userProfile && (
-            <div className="flex items-center gap-2.5 pt-2 border-t border-slate-300/70 dark:border-slate-800/80">
-              {userProfile.avatar_url ? (
-                <img
-                  src={userProfile.avatar_url}
-                  alt={userProfile.nickname || 'Користувач'}
-                  className="w-7 h-7 rounded-full object-cover shrink-0 ring-1 ring-slate-400 dark:ring-slate-700"
+            {/* Форма створення папки */}
+            {isCreatingFolder && (
+              <form
+                onSubmit={handleCreateGroupSubmit}
+                className="mt-2 p-2 bg-white dark:bg-slate-900 rounded-xl border border-emerald-500 shadow-sm space-y-2 animate-in fade-in duration-150"
+              >
+                <input
+                  type="text"
+                  autoFocus
+                  value={newFolderName}
+                  onChange={(e) => setNewFolderName(e.target.value)}
+                  placeholder="Назва нової папки..."
+                  className="w-full px-2 py-1 text-xs rounded border border-slate-300 dark:border-slate-700 bg-transparent text-slate-800 dark:text-slate-100 focus:outline-none"
                 />
-              ) : (
-                <div className="w-7 h-7 rounded-full bg-emerald-600 text-white font-bold text-xs flex items-center justify-center shrink-0">
-                  {getInitials(userProfile.nickname || 'К')}
+                <div className="flex justify-end gap-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsCreatingFolder(false)
+                      setNewFolderName('')
+                    }}
+                    className="px-2 py-0.5 text-xs text-slate-500 hover:text-slate-700"
+                  >
+                    Скасувати
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-2.5 py-0.5 text-xs bg-emerald-600 text-white rounded font-medium hover:bg-emerald-700"
+                  >
+                    Створити
+                  </button>
                 </div>
-              )}
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-1.5">
-                  <p className="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate">
-                    {userProfile.nickname || 'Користувач'}
+              </form>
+            )}
+          </div>
+
+          {/* Посилання "До MeteoUAV" + профіль */}
+          <div className="p-3 space-y-2">
+            <Link
+              to="/app"
+              className="flex items-center gap-2.5 w-full px-3 py-2 rounded-xl text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-300/80 dark:hover:bg-slate-900 transition-colors text-xs font-semibold"
+              title="Повернутися до застосунку MeteoUAV"
+            >
+              <ArrowLeft className="w-4 h-4 text-emerald-500 shrink-0" />
+              <span>До MeteoUAV</span>
+            </Link>
+
+            {userProfile && (
+              <div className="flex items-center gap-2.5 pt-2 border-t border-slate-300/70 dark:border-slate-800/80">
+                {userProfile.avatar_url ? (
+                  <img
+                    src={userProfile.avatar_url}
+                    alt={userProfile.nickname || 'Користувач'}
+                    className="w-7 h-7 rounded-full object-cover shrink-0 ring-1 ring-slate-400 dark:ring-slate-700"
+                  />
+                ) : (
+                  <div className="w-7 h-7 rounded-full bg-emerald-600 text-white font-bold text-xs flex items-center justify-center shrink-0">
+                    {getInitials(userProfile.nickname || 'К')}
+                  </div>
+                )}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <p className="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate">
+                      {userProfile.nickname || 'Користувач'}
+                    </p>
+                    {userProfile.is_pro && (
+                      <span className="text-[9px] font-bold px-1 rounded bg-amber-500/20 text-amber-500 border border-amber-500/30">
+                        PRO
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
+                    Авторизований сеанс
                   </p>
-                  {userProfile.is_pro && (
-                    <span className="text-[9px] font-bold px-1 rounded bg-amber-500/20 text-amber-500 border border-amber-500/30">
-                      PRO
-                    </span>
-                  )}
                 </div>
-                <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
-                  Авторизований сеанс
-                </p>
               </div>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       </aside>
     </>

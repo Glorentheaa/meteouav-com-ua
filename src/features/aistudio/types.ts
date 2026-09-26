@@ -41,8 +41,10 @@ export interface AiMessage {
   attachments?: AiMessageAttachment[]
   isError?: boolean
   usage?: TokenUsage | null // токени за цей запит (лише у повідомленнях асистента)
+  // Модерація повідомлень
+  isExcludedFromHistory?: boolean // Якщо true — повідомлення виключено з відправки в history
+  isCutPoint?: boolean            // Якщо true — повідомлення є точкою відсіку (history надсилається лише після нього)
 }
-
 
 export interface AiChatSession {
   id: string
@@ -54,6 +56,13 @@ export interface AiChatSession {
   messages: AiMessage[]
 }
 
+/** Команди для бекенду AI агента */
+export type AiCommand =
+  | '/summarize'   // Стиснути і підсумувати контекст
+  | '/codeonly'    // Лише код у відповіді
+  | '/search'      // Увімкнути пошук
+  | '/thinking'    // Увімкнути глибоке мислення
+
 export interface N8nChatPayload {
   chatInput: string
   message: string
@@ -62,6 +71,7 @@ export interface N8nChatPayload {
   history: Array<{
     role: 'user' | 'assistant'
     content: string
+    excluded?: boolean   // якщо true — це повідомлення виключене з контексту
   }>
   profile?: {
     id: string
@@ -81,4 +91,10 @@ export interface N8nChatPayload {
     isPro: boolean
   }
   timestamp: string
+  // Прапори команд
+  commands?: {
+    codeOnly?: boolean
+    search?: boolean
+    thinking?: boolean
+  }
 }
