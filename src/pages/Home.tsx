@@ -1,24 +1,107 @@
 import React from 'react'
-import { CloudSun } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { LogIn, UserPlus } from 'lucide-react'
+import { ThemeSwitcher, type Theme } from '../components/common/ThemeSwitcher'
+import { useAuth } from '../context/useAuth'
+import { Logo } from '../components/common/Logo'
 
 export const Home: React.FC = () => {
+  const navigate = useNavigate()
+  const { user, loading } = useAuth()
+
+  const [theme, setTheme] = React.useState<Theme>(() => {
+    return (localStorage.getItem('theme') as Theme) || 'system'
+  })
+
+  React.useEffect(() => {
+    const root = window.document.documentElement
+    root.classList.remove('light', 'dark')
+    if (theme === 'system') {
+      localStorage.removeItem('theme')
+      if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        root.classList.add('dark')
+      }
+    } else {
+      localStorage.setItem('theme', theme)
+      root.classList.add(theme)
+    }
+  }, [theme])
+
+  // Якщо вже залогінений — відразу до MeteoApp
+  React.useEffect(() => {
+    if (!loading && user) {
+      navigate('/app', { replace: true })
+    }
+  }, [user, loading, navigate])
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-200 dark:bg-slate-950">
+        <div className="w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+      </div>
+    )
+  }
+
   return (
-    <div className="flex flex-col items-center justify-center flex-1 text-center px-4 py-12">
-      <CloudSun className="w-20 h-20 text-slate-300 dark:text-slate-800 mb-6" />
+    <div className="min-h-screen flex flex-col bg-slate-200 dark:bg-slate-950 transition-colors duration-300">
+      {/* Перемикач тем у правому верхньому куті */}
+      <div className="absolute top-4 right-4 z-10">
+        <ThemeSwitcher theme={theme} onThemeChange={setTheme} />
+      </div>
 
-      {/* ========================================================================= */}
-      {/* [STATIC_TEXT] ГОЛОВНИЙ ЗАГОЛОВОК СТОРІНКИ HOME                            */}
-      {/* ========================================================================= */}
-      <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-slate-800 dark:text-white mb-4">
-        Сервіс у стадії розробки
-      </h1>
+      {/* Центральний контент */}
+      <div className="flex-1 flex flex-col items-center justify-center px-4 py-16 text-center">
+        {/* Логотип великий */}
+        <div className="mb-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
+          <Logo size="large" asLink={false} />
+        </div>
 
-      {/* ========================================================================= */}
-      {/* [STATIC_TEXT] ПІДЗАГОЛОВОК ТА ОПИС СТАТУСУ РОЗРОБКИ                      */}
-      {/* ========================================================================= */}
-      <p className="max-w-xl text-slate-600 dark:text-slate-400 text-base leading-relaxed mb-8">
-        MeteoUAV знаходиться на етапі закритого калібрування та створення архітектури.
-      </p>
+        {/* Підзаголовок */}
+        <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 delay-100">
+          <p className="text-sm sm:text-base font-semibold uppercase tracking-widest text-emerald-600 dark:text-emerald-400 mb-6">
+            Метеорологічна розвідка для пілотів БПЛА
+          </p>
+        </div>
+
+        {/* Опис сервісу */}
+        <div className="max-w-xl animate-in fade-in slide-in-from-bottom-4 duration-500 delay-200">
+          <p className="text-slate-600 dark:text-slate-400 text-base sm:text-lg leading-relaxed mb-10">
+            Закрита платформа для тактичної метеорологічної розвідки. Аналіз погоди, AI-асистент
+            та оперативні дані для безпечних польотів БПЛА на полі бою.
+          </p>
+        </div>
+
+        {/* Кнопки */}
+        <div className="flex flex-col sm:flex-row gap-3 animate-in fade-in slide-in-from-bottom-4 duration-500 delay-300 w-full max-w-sm">
+          <button
+            type="button"
+            onClick={() => navigate('/auth?mode=login')}
+            className="flex-1 flex items-center justify-center gap-2 py-3.5 px-6 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-bold rounded-2xl shadow-lg shadow-emerald-600/30 hover:shadow-emerald-600/50 transition-all duration-200"
+          >
+            <LogIn className="w-5 h-5" />
+            <span>Увійти</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => navigate('/auth?mode=register')}
+            className="flex-1 flex items-center justify-center gap-2 py-3.5 px-6 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 active:scale-95 text-slate-900 dark:text-white font-bold rounded-2xl border border-slate-300 dark:border-slate-700 shadow-sm transition-all duration-200"
+          >
+            <UserPlus className="w-5 h-5" />
+            <span>Зареєструватись</span>
+          </button>
+        </div>
+
+        {/* Підказка про систему запрошень */}
+        <p className="mt-6 text-xs text-slate-500 dark:text-slate-500 animate-in fade-in duration-500 delay-500">
+          Реєстрація доступна лише за ключем запрошення від чинного учасника.
+        </p>
+      </div>
+
+      {/* Підвал */}
+      <div className="pb-6 text-center text-xs text-slate-400 dark:text-slate-600">
+        © {new Date().getFullYear()} MeteoUAV · Закрита платформа
+      </div>
     </div>
   )
 }

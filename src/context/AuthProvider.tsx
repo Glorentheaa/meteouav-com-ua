@@ -172,13 +172,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return { error: error ? new Error(error.message) : null }
   }
 
-  const signUp = async (email: string, password: string, nickname: string, inviteKey: string) => {
-    // 1. Перевіряємо ключ запрошення в таблиці profiles
+  const validateInviteKey = async (inviteKey: string): Promise<{ valid: boolean; error: Error | null }> => {
     const trimmedKey = inviteKey.trim().toUpperCase()
     if (!trimmedKey) {
       return {
+        valid: false,
         error: new Error('Необхідно вказати ключ запрошення.'),
-        invalidInviteKey: true,
       }
     }
 
@@ -192,14 +191,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (keyError) {
       console.error('Помилка перевірки ключа:', keyError.message)
       return {
+        valid: false,
         error: new Error('Помилка перевірки ключа запрошення. Спробуйте пізніше.'),
-        invalidInviteKey: false,
       }
     }
 
     if (!keyOwner) {
       return {
+        valid: false,
         error: new Error('Ключ запрошення не дійсний або не існує.'),
+      }
+    }
+
+    return { valid: true, error: null }
+  }
+
+  const signUp = async (email: string, password: string, nickname: string, inviteKey: string) => {
+    const trimmedKey = inviteKey.trim().toUpperCase()
+    // 1. Перевіряємо ключ запрошення в таблиці profiles
+    const keyValidation = await validateInviteKey(trimmedKey)
+    if (!keyValidation.valid) {
+      return {
+        error: keyValidation.error,
         invalidInviteKey: true,
       }
     }
@@ -347,6 +360,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         updateNickname,
         refreshProfile,
         generateInviteKey,
+        validateInviteKey,
       }}
     >
       {children}

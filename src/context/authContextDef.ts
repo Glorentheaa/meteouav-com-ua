@@ -40,6 +40,7 @@ export interface AuthContextType {
   updateNickname: (newNickname: string) => Promise<{ error: Error | null }>
   refreshProfile: () => Promise<void>
   generateInviteKey: () => Promise<{ key: string | null; error: Error | null }>
+  validateInviteKey: (inviteKey: string) => Promise<{ valid: boolean; error: Error | null }>
 }
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined)
