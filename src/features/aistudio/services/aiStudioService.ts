@@ -5,7 +5,7 @@ import {
   type N8nChatPayload,
   type TokenUsage,
 } from '../types'
-import { BUILT_IN_PROFILES, N8N_CHAT_WEBHOOK_URL } from '../defaultProfiles'
+import { DEFAULT_TEA_PROFILE, N8N_CHAT_WEBHOOK_URL } from '../defaultProfiles'
 
 const STORAGE_KEYS = {
   PROFILES: 'meteo_aistudio_profiles_v3',
@@ -22,15 +22,23 @@ export class AiStudioStorage {
       const raw = localStorage.getItem(STORAGE_KEYS.PROFILES)
       if (raw) {
         const parsed: AiProfile[] = JSON.parse(raw)
-        if (Array.isArray(parsed)) return parsed
+        if (Array.isArray(parsed)) {
+          // Базовий профіль "Теа" завжди на першому місці і захищений
+          const custom = parsed.filter((p) => p.id !== 'tea' && !p.isBuiltIn)
+          return [DEFAULT_TEA_PROFILE, ...custom]
+        }
       }
     } catch (e) {
       console.error('Помилка читання профілів:', e)
     }
-    return BUILT_IN_PROFILES
+    return [DEFAULT_TEA_PROFILE]
   }
 
   static saveProfile(profile: AiProfile): AiProfile[] {
+    if (profile.id === 'tea' || profile.isBuiltIn) {
+      return this.getProfiles()
+    }
+
     const all = this.getProfiles()
     const index = all.findIndex((p) => p.id === profile.id)
     let updated: AiProfile[]
@@ -43,7 +51,10 @@ export class AiStudioStorage {
     }
 
     try {
-      localStorage.setItem(STORAGE_KEYS.PROFILES, JSON.stringify(updated))
+      localStorage.setItem(
+        STORAGE_KEYS.PROFILES,
+        JSON.stringify(updated.filter((p) => p.id !== 'tea'))
+      )
     } catch (e) {
       console.error('Помилка збереження профілю:', e)
     }
@@ -51,14 +62,19 @@ export class AiStudioStorage {
   }
 
   static deleteProfile(profileId: string): AiProfile[] {
+    if (profileId === 'tea') return this.getProfiles()
+
     const all = this.getProfiles()
-    const updated = all.filter((p) => p.id !== profileId)
+    const updated = all.filter((p) => p.id !== profileId && !p.isBuiltIn)
     try {
-      localStorage.setItem(STORAGE_KEYS.PROFILES, JSON.stringify(updated))
+      localStorage.setItem(
+        STORAGE_KEYS.PROFILES,
+        JSON.stringify(updated.filter((p) => p.id !== 'tea'))
+      )
     } catch (e) {
       console.error('Помилка видалення профілю:', e)
     }
-    return updated
+    return [DEFAULT_TEA_PROFILE, ...updated.filter((p) => p.id !== 'tea')]
   }
 
   // --- Групи / Папки чатів (Chat Groups) ---
@@ -184,15 +200,22 @@ export class AiStudioStorage {
     }
   }
 
-  static getActiveProfileId(): string | null {
-    return localStorage.getItem(STORAGE_KEYS.ACTIVE_PROFILE_ID)
+  static getActiveProfileId(): string {
+    const saved = localStorage.getItem(STORAGE_KEYS.ACTIVE_PROFILE_ID)
+    if (saved) {
+      const profiles = this.getProfiles()
+      if (profiles.some((p) => p.id === saved)) {
+        return saved
+      }
+    }
+    return 'tea'
   }
 
   static setActiveProfileId(id: string | null): void {
     if (id) {
       localStorage.setItem(STORAGE_KEYS.ACTIVE_PROFILE_ID, id)
     } else {
-      localStorage.removeItem(STORAGE_KEYS.ACTIVE_PROFILE_ID)
+      localStorage.setItem(STORAGE_KEYS.ACTIVE_PROFILE_ID, 'tea')
     }
   }
 }

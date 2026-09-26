@@ -158,66 +158,6 @@ export const AiStudioInput: React.FC<AiStudioInputProps> = ({
         </div>
       )}
 
-      {/* Рядок команд */}
-      <div className="flex items-center gap-1.5 mb-1.5 flex-wrap">
-        {/* Summarize & Compress */}
-        <button
-          type="button"
-          onClick={handleSummarize}
-          disabled={isGenerating || disabled}
-          className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:border-emerald-500 text-[11px] font-medium transition-colors disabled:opacity-40"
-          title="Стиснути і підсумувати контекст (надсилає /summarize)"
-        >
-          <Scissors className="w-3 h-3 text-emerald-500" />
-          <span>Summarize &amp; Compress</span>
-        </button>
-
-        {/* Чекбокс "Тільки код" */}
-        <button
-          type="button"
-          onClick={() => setCodeOnly((v) => !v)}
-          className={`flex items-center gap-1 px-2.5 py-1 rounded-lg border text-[11px] font-medium transition-colors ${
-            codeOnly
-              ? 'bg-sky-500/15 border-sky-500/60 text-sky-700 dark:text-sky-400'
-              : 'bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:border-sky-400'
-          }`}
-          title="Додає /codeonly до запиту — відповідь лише з кодом"
-        >
-          <Code2 className="w-3 h-3" />
-          <span>Тільки код</span>
-        </button>
-
-        {/* Чекбокс "Пошук" */}
-        <button
-          type="button"
-          onClick={() => setSearch((v) => !v)}
-          className={`flex items-center gap-1 px-2.5 py-1 rounded-lg border text-[11px] font-medium transition-colors ${
-            search
-              ? 'bg-emerald-500/15 border-emerald-500/60 text-emerald-700 dark:text-emerald-400'
-              : 'bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:border-emerald-400'
-          }`}
-          title="Додає /search до запиту — увімкнути пошук"
-        >
-          <Search className="w-3 h-3" />
-          <span>Пошук</span>
-        </button>
-
-        {/* Чекбокс "Thinking" */}
-        <button
-          type="button"
-          onClick={() => setThinking((v) => !v)}
-          className={`flex items-center gap-1 px-2.5 py-1 rounded-lg border text-[11px] font-medium transition-colors ${
-            thinking
-              ? 'bg-purple-500/15 border-purple-500/60 text-purple-700 dark:text-purple-400'
-              : 'bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:border-purple-400'
-          }`}
-          title="Додає /thinking до запиту — глибоке мислення"
-        >
-          <BrainCircuit className="w-3 h-3" />
-          <span>Thinking</span>
-        </button>
-      </div>
-
       {/* Контейнер форми введення */}
       <div className="relative bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-800 rounded-2xl sm:rounded-3xl shadow-md focus-within:ring-2 focus-within:ring-emerald-500/40 focus-within:border-emerald-500 transition-all overflow-hidden">
         {/* Прикріплені файли */}
@@ -327,6 +267,66 @@ export const AiStudioInput: React.FC<AiStudioInputProps> = ({
             )}
           </div>
         </div>
+      </div>
+
+      {/* Рядок команд — розміщений під полем вводу в самому низу */}
+      <div className="flex items-center gap-1.5 mt-2 flex-wrap">
+        {/* Summarize & Compress */}
+        <button
+          type="button"
+          onClick={handleSummarize}
+          disabled={isGenerating || disabled}
+          className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:border-emerald-500 text-[11px] font-medium transition-colors disabled:opacity-40"
+          title="Стиснути і підсумувати контекст (надсилає /summarize)"
+        >
+          <Scissors className="w-3 h-3 text-emerald-500" />
+          <span>Summarize &amp; Compress</span>
+        </button>
+
+        {/* Чекбокс "Тільки код" */}
+        <button
+          type="button"
+          onClick={() => setCodeOnly((v) => !v)}
+          className={`flex items-center gap-1 px-2.5 py-1 rounded-lg border text-[11px] font-medium transition-colors ${
+            codeOnly
+              ? 'bg-sky-500/15 border-sky-500/60 text-sky-700 dark:text-sky-400'
+              : 'bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:border-sky-400'
+          }`}
+          title="Додає /codeonly до запиту — відповідь лише з кодом"
+        >
+          <Code2 className="w-3 h-3" />
+          <span>Тільки код</span>
+        </button>
+
+        {/* Чекбокс "Пошук" */}
+        <button
+          type="button"
+          onClick={() => setSearch((v) => !v)}
+          className={`flex items-center gap-1 px-2.5 py-1 rounded-lg border text-[11px] font-medium transition-colors ${
+            search
+              ? 'bg-emerald-500/15 border-emerald-500/60 text-emerald-700 dark:text-emerald-400'
+              : 'bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:border-emerald-400'
+          }`}
+          title="Додає /search до запиту — увімкнути пошук"
+        >
+          <Search className="w-3 h-3" />
+          <span>Пошук</span>
+        </button>
+
+        {/* Чекбокс "Thinking" */}
+        <button
+          type="button"
+          onClick={() => setThinking((v) => !v)}
+          className={`flex items-center gap-1 px-2.5 py-1 rounded-lg border text-[11px] font-medium transition-colors ${
+            thinking
+              ? 'bg-purple-500/15 border-purple-500/60 text-purple-700 dark:text-purple-400'
+              : 'bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:border-purple-400'
+          }`}
+          title="Додає /thinking до запиту — глибоке мислення"
+        >
+          <BrainCircuit className="w-3 h-3" />
+          <span>Thinking</span>
+        </button>
       </div>
     </div>
   )

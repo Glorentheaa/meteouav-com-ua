@@ -79,6 +79,7 @@ export const ProfileManagerModal: React.FC<ProfileManagerModalProps> = ({
   const [error, setError] = useState<string | null>(null)
 
   if (!isOpen) return null
+  if (initialProfile?.id === 'tea' || initialProfile?.isBuiltIn) return null
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -236,7 +237,7 @@ export const ProfileManagerModal: React.FC<ProfileManagerModalProps> = ({
         {/* Дії */}
         <div className="flex items-center justify-between px-5 py-3.5 border-t border-slate-200 dark:border-slate-800 bg-slate-100/70 dark:bg-slate-900/80">
           <div>
-            {isEditing && onDeleteProfile && (
+            {isEditing && onDeleteProfile && initialProfile?.id !== 'tea' && !initialProfile?.isBuiltIn && (
               <button
                 type="button"
                 onClick={() => {

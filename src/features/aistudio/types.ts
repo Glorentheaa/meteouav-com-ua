@@ -6,6 +6,7 @@ export interface AiProfile {
   description?: string
   systemInstructions: string
   createdAt?: number
+  isBuiltIn?: boolean
 }
 
 // Псевдонім для зворотної сумісності

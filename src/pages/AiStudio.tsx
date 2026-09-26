@@ -57,7 +57,7 @@ export const AiStudio: React.FC = () => {
   const [profiles, setProfiles] = useState<AiProfile[]>(() =>
     AiStudioStorage.getProfiles()
   )
-  const [activeProfileId, setActiveProfileId] = useState<string | null>(() =>
+  const [activeProfileId, setActiveProfileId] = useState<string>(() =>
     AiStudioStorage.getActiveProfileId()
   )
 
@@ -80,9 +80,9 @@ export const AiStudio: React.FC = () => {
   const [isGenerating, setIsGenerating] = useState(false)
   const inputRef = useRef<HTMLTextAreaElement>(null)
 
-  // Активний профіль (може бути null, якщо не обрано)
+  // Активний профіль (за замовчуванням "Теа")
   const activeProfile =
-    profiles.find((p) => p.id === activeProfileId) || null
+    profiles.find((p) => p.id === activeProfileId) || profiles[0] || null
 
   // Активна сесія
   const activeSession =
@@ -104,8 +104,9 @@ export const AiStudio: React.FC = () => {
 
   // Зміна активного профілю
   const handleSelectProfile = (profileId: string | null) => {
-    setActiveProfileId(profileId)
-    AiStudioStorage.setActiveProfileId(profileId)
+    const targetId = profileId || 'tea'
+    setActiveProfileId(targetId)
+    AiStudioStorage.setActiveProfileId(targetId)
   }
 
   // Новий чат (скидання активної сесії до початкового стану)
@@ -123,13 +124,12 @@ export const AiStudio: React.FC = () => {
     AiStudioStorage.setActiveSessionId(sessionId)
     const session = sessions.find((s) => s.id === sessionId)
     if (session) {
-      if (session.profileId) {
-        setActiveProfileId(session.profileId)
-        AiStudioStorage.setActiveProfileId(session.profileId)
-      } else {
-        setActiveProfileId(null)
-        AiStudioStorage.setActiveProfileId(null)
-      }
+      const targetProfileId =
+        session.profileId && profiles.some((p) => p.id === session.profileId)
+          ? session.profileId
+          : 'tea'
+      setActiveProfileId(targetProfileId)
+      AiStudioStorage.setActiveProfileId(targetProfileId)
     }
   }
 
@@ -208,8 +208,8 @@ export const AiStudio: React.FC = () => {
     const updated = AiStudioStorage.deleteProfile(profileId)
     setProfiles(updated)
     if (activeProfileId === profileId) {
-      setActiveProfileId(null)
-      AiStudioStorage.setActiveProfileId(null)
+      setActiveProfileId('tea')
+      AiStudioStorage.setActiveProfileId('tea')
     }
   }
 
@@ -236,7 +236,7 @@ export const AiStudio: React.FC = () => {
         title,
         createdAt: Date.now(),
         updatedAt: Date.now(),
-        profileId: activeProfile?.id || null,
+        profileId: activeProfile?.id || 'tea',
         groupId: null, // Усі нові чати спочатку йдуть у "Збережені чати", користувач сам переміщує
         messages: [],
       }

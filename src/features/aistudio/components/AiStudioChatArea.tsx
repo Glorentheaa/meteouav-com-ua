@@ -215,13 +215,13 @@ export const AiStudioChatArea: React.FC<AiStudioChatAreaProps> = ({
 
               {/* Кнопки під повідомленням */}
               <div className={`flex items-center gap-1 mt-1.5 ${isUser ? 'justify-end' : 'justify-start pl-1'}`}>
-                {/* Кнопка копіювання (для відповідей AI) */}
-                {!isUser && !message.isError && (
+                {/* Кнопка копіювання */}
+                {!message.isError && (
                   <button
                     type="button"
                     onClick={() => handleCopy(message.id, message.content)}
                     className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors"
-                    title="Скопіювати відповідь"
+                    title={isUser ? 'Скопіювати повідомлення' : 'Скопіювати відповідь'}
                   >
                     {copiedId === message.id ? (
                       <Check className="w-3.5 h-3.5 text-emerald-500" />
